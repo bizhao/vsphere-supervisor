@@ -81,22 +81,15 @@ vcf version
 mkdir -p ~/vcf-plugin-bundle
 tar -xvzf VCF-Consumption-CLI-PluginBundle-Linux_AMD64-9.1.0.tar.gz -C ~/vcf-plugin-bundle/
 
-## Install a single plugin (example: package) or all plugins
-vcf plugin install package  --local-source ~/vcf-plugin-bundle/
+## Install a single plugin (example: addon) or all plugins
+vcf plugin install addon  --local-source ~/vcf-plugin-bundle/
 vcf plugin install all --local-source ~/vcf-plugin-bundle/
 
 ## Verify the plugins are installed
 vcf plugin list
 ```
 
-### 1c. VKS Add-ons
-VKS add-ons enable administrators and users to use the VCF CLI or Carvel Custom Resources to add and manage standard services and add-ons on Kubernetes clusters. With VKS add-ons, you can deploy various add-ons to VKS Clusters, such as cert-manager, Contour, Prometheus, Grafana, and more. Download the relevant the VKS add-on bundle using the following command via the image migrator python script -
-
-```bash
-./oci_image_depot_migrator.py download -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211
-```
-
-### 1d. Binaries and YAML files required for Supervisor Services
+### 1c. Binaries and YAML files required for Supervisor Services
 Supervisor Services are Carvel packages and are defined by their configuration file. The configuration file contains the reference to the image that holds the package manifest. As a prerequisite for migrating the Supervisor Services to the distribution docker registry on Software Depot, we need to extract the value of the image containing the package manifest. To do so, we can download the configuration YAML file with `legacy` in the file name and look for the following key - `spec.template.spec.fetch.imgpkgBundle[].image` for the Package object. For example, in the configuration file for the ArgoCD Operator 9.1.0: `supervisor-service-argocd-legacy-1.1.0-25166333.yml`, the value is the image that would need to be migrated to the air-gapped environment: `projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1`.
 
 ```yaml
@@ -126,8 +119,61 @@ You can execute the following command from the Bastion host to download the imag
 ```bash
 ## Download ArgoCD Supervisor Service Binaries
 ./oci_image_depot_migrator.py download -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1
+
+## Sample output
+oci_image_depot_migrator — download operation:
+  Download the image bundle from the source repository as a local tar file (imgpkg copy -b … --to-tar). The tar is kept after this command finishes.
+
+  Source bundle:  projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1
+  Work directory: /root
+  Output tar:       /root/argocd-service-v1.1.0_vmware.1.tar
+
++ imgpkg copy -b projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 --to-tar /root/argocd-service-v1.1.0_vmware.1.tar --cosign-signatures
+copy | exporting 6 images...
+copy | will export projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service@sha256:079b2362c304475fce764e74787e2dfca0fa55c5c794f44ed8026b9a2dd165f4
+copy | will export projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service@sha256:237208855f6ad246c635fb5eaf73c46fe15d44c3ee08b5b111c0af4133008991
+copy | will export projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service@sha256:51dd21339a030e329342738655c982d51244e8d24d1418772e3c7a995c4a684b
+copy | will export projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service@sha256:6770cfdad0e4948e9e83ccdee222dff2077c38c5b4e83901ac2d7e7cc3545246
+copy | will export projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service@sha256:95f0c93ffd3876de6a0b74db120a4c948d0797dc433ab1bdcc324151e505bab9
+copy | will export projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service@sha256:bfdc9cfebc7fc599fc8398de398efab8348a53135fb1a9da6cfdd16674b7a453
+copy | exported 6 images
+copy | writing layers...
+copy | done: file 'manifest.json' (123.918µs)
+copy | done: file 'sha256-89732bc7504122601f40269fc9ddfb70982e633ea9caf641ae45736f2846b004.tar.gz' (41.37µs)
+copy | done: file 'sha256-0e2673e247e340616ac68d3bfc9d439ee9825a2321c06c376606951d68afa651.tar.gz' (1.268268482s)
+copy | done: file 'sha256-3dcb03f45f00fff2a746579a51d7a1c48f3359adeac4c8ee55df0f9e749419da.tar.gz' (1.857008991s)
+copy | done: file 'sha256-eff1258cabc354e8da257df391e6fce4cbd9e624e5ab7a1fd4e554d2d7c0924a.tar.gz' (541.315937ms)
+copy | done: file 'sha256-8dd14c08c00bced3376ffb0cef8cb9364f41d00c3a1e26f8e8eba9dca0e82bdf.tar.gz' (2.139829259s)
+copy | done: file 'sha256-e607b5afc2fa8c30850a7082dfcc6ca7a402834f4ad5d46399a13b9b85831fc2.tar.gz' (2.190791516s)
+copy | done: file 'sha256-64bdbeb13ccb1e6d041927bec596e9485057c7d24bf00adeb69a683a87ff9da1.tar.gz' (545.350836ms)
+copy | done: file 'sha256-88cf5c94a9d5c510ee08aef192e860502aea9abd2a559fa0136344cff1069d0e.tar.gz' (2.908892839s)
+copy | done: file 'sha256-ffd20d454278823aa6dba732bd23f106319b1ce049ba31878cc3537ac02a022d.tar.gz' (447.531237ms)
+copy | done: file 'sha256-24534aa455a803ae7325c9685c8e2f9485e40df8f84e9fa7518c5bfd75cb383d.tar.gz' (277.954606ms)
+copy | done: file 'sha256-10aa01ab563021d2fa06e40a349e32fe17389fa8ecaf972e28b62c46e148fe45.tar.gz' (46.114054ms)
+copy | done: file 'sha256-fbe23a1ed6d25711bad1553cabd6ccdb936f9327d91de460a68d45f1244e2abb.tar.gz' (132.365849ms)
+copy | done: file 'sha256-70a675fdcbb066ad154692632dbd83ae786742a78f1e580c29163606055bcc0a.tar.gz' (686.94861ms)
+copy | done: file 'sha256-229920928a00afd79a934178bb8c219d28b8bad61136d073d2d8e562fd7e360d.tar.gz' (120.601145ms)
+copy | done: file 'sha256-ff3b6abf48df124ef6cd97ab1dd49a7321b958670214b23a01e0fd886456acaf.tar.gz' (5.100654ms)
+copy | done: file 'sha256-0df5a351b85a9f0c0015eafecad3d5f6db0f68740134e96c87edc6dfe876220c.tar.gz' (18.868868ms)
+copy | done: file 'sha256-c496065031ff611cda2c1b8860f04e8f967ff4c775780f28a28e50ee0a7d4441.tar.gz' (126.566043ms)
+copy | done: file 'sha256-04e6897e12163e5f64eeeb09b6e9d456227dd0acb7e406f6022374d27519f032.tar.gz' (5.150078ms)
+copy | done: file 'sha256-e7878035ed7caf7ae686119723f5d9ba32cf79f3624bfaa9737c6766349e9863.tar.gz' (99.18484ms)
+copy | done: file 'sha256-bd708305c31669d27de98616bb363a2b1b1dd43ca96f5f7e7c5625d562c662a9.tar.gz' (122.526339ms)
+copy | done: file 'sha256-156e2c2831cddb9b247bf58bb2529c96b83d064b6a94b737ac6b2783337633a9.tar.gz' (30.620344ms)
+copy | done: file 'sha256-995c015c737e5d993c36e56294f1d2fcce682667db9bc8c299daadc641363c95.tar.gz' (90.747µs)
+copy | done: file 'sha256-e9be946ab6ec0a377f10363b2aedd6e0f7775b27493ff242e5cf736f5072d5ec.tar.gz' (146.06µs)
+copy | done: file 'sha256-7b5c0d30e77a40950ca0709bfb336b08101cacaf3b892ebe834706f1def2dd89.tar.gz' (38.688218ms)
+copy | done: file 'sha256-88d8b6a90cade74273e793fdd4cab5371db24ee09f550acfb4078f81b9882503.tar.gz' (114.297µs)
+copy | done: file 'sha256-b68d90d759408486ca26fb81227e263bf7b8b0d1a45c3c048259e76a6bcba822.tar.gz' (45.568µs)
+copy | done: file 'sha256-e6e9a2df088e0a9c1ea32351db9a2b7961ac42feb28ba1892c1016da34236497.tar.gz' (38.772µs)
+copy | done: file 'sha256-12b978624d737a557a5d02491823d4fbbced67c957b9e982e7245750628b7b83.tar.gz' (471.551µs)
+copy | done: file 'sha256-5ccfff97b99f2d3add2430aebfa2d5d42c762b0d2b9c2bc9e4f488dfb09e55fc.tar.gz' (260.831µs)
+
+Succeeded
+/root/argocd-service-v1.1.0_vmware.1.tar
+Done.
 ```
-A bundle tar file will be downloaded to the same directory as the python script by default, perform similar steps for other Supervisor Services that must be installed in the air-gapped environment. The configuration YAML files of Supervisor Services can be discovered on [Broadcom Support Portal](https://support.broadcom.com) by searching for `supervisor services` and clicking on `vSphere Supervisor Services` after login and navigating to `My Downloads`. For VKS service, the latest version 3.6.3 is released at the time of the guide writing, and this version should be downloaded for VKS upgrade later in this guide.
+A bundle tar file named as `argocd-service-v1.1.0_vmware.1.tar` will be downloaded to the same directory as the python script by default, perform similar steps for other Supervisor Services that must be installed in the air-gapped environment. The configuration YAML files of Supervisor Services can be discovered on [Broadcom Support Portal](https://support.broadcom.com) by searching for `supervisor services` and clicking on `vSphere Supervisor Services` after login and navigating to `My Downloads`. For VKS service, the latest version 3.6.3 is released at the time of the guide writing, and this version should be downloaded for VKS upgrade later in this guide.
 
 The table below provides the sample list of Supervisor Services that can be downloaded from Broadcom Support Portal and installed on the platform -
 
@@ -142,6 +188,14 @@ The table below provides the sample list of Supervisor Services that can be down
 |Harbor|Standard|2.14.2|
 |Metrics Aggregator|Standard|0.1.0|
 |Supervisor Management Proxy|Standard|0.4.1|
+
+### 1d. VKS Add-ons
+VKS add-ons enable administrators and users to use the VCF CLI or Carvel Custom Resources to add and manage standard services and add-ons on Kubernetes clusters. With VKS add-ons, you can deploy various add-ons to VKS Clusters, such as cert-manager, Contour, Prometheus, Grafana, and more. Download the relevant the VKS add-on bundle using the following command via the [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) python script, which will download the OCI images as tar
+file vks-standard-packages-3.6.0-20260211.tar into the local script directory -
+
+```bash
+./oci_image_depot_migrator.py download -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211
+```
 
 ### Summary
 The following files, binaries, and packages have been successfully downloaded in this section and **must be transferred to the Admin host**.
@@ -252,8 +306,44 @@ In a VCF deployment with VCF Automation installed, follow this [documentation](h
 
 ## 7. Upload Packages to the Software Depot
 
-### 7a. Upload VKS Add-on Packages to the distributon registry on Software Depot
-The VKS Add-on package bundle, downloaded in Step 1c, must be uploaded to the distribution docker registry on Software Depot using the provided python script. The upload command requires the Software Depot FQDN, which can be discovered by login to VCF OPS and navigate to Build --> Lifecycle --> VCF management --> Components page and identify the Fleet components FQDN.
+### 7a. Upload Supervisor Services to the distributon registry on Software Depot
+All the Supervisor Services image bundle binaries downloaded in Step 1d must be uploaded to the Software Depot by using the provided [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) script. The same Software Depot FQDN is required for the upload.
+
+```bash
+## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
+./oci_image_depot_migrator.py upload -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 -t fleet-10-144-79-70.vcfd.broadcom.net
+
+## Sample Output
+oci_image_depot_migrator — upload operation:
+  1) Use the existing local tar (must match the name derived from --source-image-repo).
+  2) Map the source repo path to the target depot repo URL (see below).
+  3) Fetch the target depot TLS certificate, then upload the tar with imgpkg.
+  4) Remove the temporary tar and certificate files after a successful upload.
+
+  Source bundle (for path mapping & tar name): projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1
+  Target depot FQDN: fleet-10-162-210-47.vcfd.broadcom.net
+  Target repo URL:   fleet-10-162-210-47.vcfd.broadcom.net/vcf-service-argocd/ga/1.1.0/argocd-service
+  Work directory:    /root
+  Tar file:          /root/argocd-service-v1.1.0_vmware.1.tar
+  Temporary CA file: /root/depot-ca.crt
+
+Step 2: Source repo path maps to the target repo URL above (used as --to-repo).
+Step 3: Fetching target depot TLS certificate…
++ openssl s_client -connect fleet-10-162-210-47.vcfd.broadcom.net:443 -showcerts | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > /root/depot-ca.crt
++ imgpkg copy --tar /root/argocd-service-v1.1.0_vmware.1.tar --to-repo fleet-10-162-210-47.vcfd.broadcom.net/vcf-service-argocd/ga/1.1.0/argocd-service --cosign-signatures --registry-ca-cert-path /root/depot-ca.crt
+copy | importing 6 images...
+....
+```
+
+In case the admin host is in DMZ and has connectivity to projects.packages.broadcom.com, the Contour Supervisor service images can be copied from projects.packages.broadcom.com directly to Software Depot.
+
+```bash
+## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
+./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 -t fleet-10-144-79-70.vcfd.broadcom.net
+```
+
+### 7b. Upload VKS Add-on Packages to the distributon registry on Software Depot
+The VKS Add-on package bundle, downloaded in Step 1c, must be uploaded to the distribution docker registry on Software Depot using the provided [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) python script. The upload command requires the Software Depot FQDN, which can be discovered by login to VCF OPS and navigate to Build --> Lifecycle --> VCF management --> Components page and identify the Fleet components FQDN.
 
 ```bash
 ## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
@@ -265,21 +355,6 @@ In case the admin host is in DMZ and has connectivity to projects.packages.broad
 ```bash
 ## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
 ./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 -t fleet-10-144-79-70.vcfd.broadcom.net
-```
-
-### 7b. Upload Supervisor Services to the distributon registry on Software Depot
-All the Supervisor Services image bundle binaries downloaded in Step 1d must be uploaded to the Software Depot by using the provided oci_image_depot_migrator.py script. The same Software Depot FQDN is required for the upload.
-
-```bash
-## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
-./oci_image_depot_migrator.py upload -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 -t fleet-10-144-79-70.vcfd.broadcom.net
-```
-
-In case the admin host is in DMZ and has connectivity to projects.packages.broadcom.com, the Contour Supervisor service images can be copied from projects.packages.broadcom.com directly to Software Depot.
-
-```bash
-## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
-./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 -t fleet-10-144-79-70.vcfd.broadcom.net
 ```
 
 ## 8. Deploy VKS Cluster(s)
@@ -329,63 +404,86 @@ vcf context create <context-name> --endpoint <SupervisorAPIEndpoint> --username 
 vcf context use <context-name>:<vsphere-namespace>:<vks-cluster-name>
 
 ## Sample Commands
-vcf context create supervisor1 --endpoint https://supervisor0.env1.lab.test --username administrator@vsphere.local --type k8s --insecure-skip-tls-verify
-vcf context use supervisor1:ns01:workload-vsphere-vks1
+vcf context create supervisor1 --endpoint https://supervisor0.env1.lab.test --username administrator@vsphere.local --workload-cluster-namespace ns01 --workload-cluster-name workload-vsphere-vks1 --type k8s --insecure-skip-tls-verify
+vcf context use supervisor1:workload-vsphere-vks1
 ```
 
-The default package repository pointing to regional Harbor should be automatically configured after the regional Harbor is installed and configured successfully, check addon repository and list the available packages.
+The default package repository pointing to regional Harbor should be automatically configured and installed after the regional Harbor is installed and configured successfully, check addon repository and list the available packages.
 ```bash
-vcf package repository list -n tkg-system
+vcf addon repository list
 
 ## Sample Output
-  NAME            SOURCE                                                                  STATUS
-  vks-standard  (imgpkg) depot.kube-system.svc/vcf/vks-standard-packages/ga/3.6.0-20260211/vks-standard-packages:3.6.0-20260211  Reconcile succeeded
+  NAME                                           NAMESPACE                 SOURCE
+  default-addonrepository-3.6.0                  vmware-system-vks-public  projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211
+  default-addonrepository-3.6.0-regional-harbor  vmware-system-vks-public  depot.kube-system.svc/vcf/vks-standard-packages/ga/3.6.0-20260211/vks-standard-packages:3.6.0-20260211
 
-vcf package available list -n tkg-system
+vcf addon repository-install list
 
 ## Sample Output
-  NAME                                            DISPLAY-NAME
-  cert-manager.tanzu.vmware.com                   cert-manager
-  cluster-autoscaler.tanzu.vmware.com             autoscaler
-  contour.tanzu.vmware.com                        contour
-  external-csi-snapshot-webhook.tanzu.vmware.com  external-csi-snapshot-webhook
-  external-dns.tanzu.vmware.com                   external-dns
-  fluent-bit.tanzu.vmware.com                     fluent-bit
-  fluxcd-helm-controller.tanzu.vmware.com         Flux Helm Controller
-  fluxcd-kustomize-controller.tanzu.vmware.com    Flux Kustomize Controller
-  fluxcd-source-controller.tanzu.vmware.com       Flux Source Controller
-  grafana.tanzu.vmware.com                        grafana
-  harbor.tanzu.vmware.com                         harbor
-  multus-cni.tanzu.vmware.com                     multus-cni
-  prometheus.tanzu.vmware.com                     prometheus
-  vsphere-pv-csi-webhook.tanzu.vmware.com         vsphere-pv-csi-webhook
-  whereabouts.tanzu.vmware.com                    whereabouts
+  NAME                        NAMESPACE                 ADDONREPOSITORY                                READY
+  default-addon-repo-install  vmware-system-vks-public  default-addonrepository-3.6.0-regional-harbor  True
+
+vcf addon available list
+
+## Sample Output
+  NAMESPACE                 ADDONNAME                    DESCRIPTION
+  vmware-system-vks-public  ako                          Integrates VMware NSX Advanced Load Balancer with Kubernetes for L4-L7 services.
+  vmware-system-vks-public  cert-manager                 Certificate management
+  vmware-system-vks-public  contour                      An ingress controller
+  vmware-system-vks-public  external-dns                 This package provides DNS synchronization functionality.
+  vmware-system-vks-public  fluent-bit                   Fluent Bit is a fast Log Processor and Forwarder
+  vmware-system-vks-public  harbor                       OCI Registry
+  vmware-system-vks-public  istio                        networking service mesh solution for containers
+  vmware-system-vks-public  prometheus                   A time series database for your metrics
+  vmware-system-vks-public  sriov-network-device-plugin  The SR-IOV Network Device Plugin is Kubernetes device plugin for discovering and
+                                                         advertising SR-IOV virtual functions (VFs) available on a Kubernetes host
+  vmware-system-vks-public  telegraf                     collect and report metrics
+  vmware-system-vks-public  vault-injector               Vault Agent Injector for Secret Store Service
+  vmware-system-vks-public  velero                       Velero is an open source tool to safely backup and restore, perform disaster
+                                                         recovery, and migrate Kubernetes cluster resources and persistent volumes.
+  vmware-system-vks-public  vsphere-pv-csi-webhook       vSphere paravirtual CSI provider webhook
+  vmware-system-vks-public  windows-gmsa-webhook         Windows Group Managed Service Accounts (GMSA) Kubernetes Webhook
+
+
+vcf addon available list cert-manager
+
+## Sample Output
+  NAMESPACE                 ADDONNAME     VERSION                ADDON-RELEASE-NAME                                        PACKAGE
+  vmware-system-vks-public  cert-manager  1.18.2+vmware.2-vks.2  cert-manager.kubernetes.vmware.com.1.18.2-vmware.2-vks.2  cert-manager.kubernetes.vmware.com/1.18.2+vmware.2-vks.2
+  vmware-system-vks-public  cert-manager  1.18.3+vmware.1-vks.1  cert-manager.kubernetes.vmware.com.1.18.3-vmware.1-vks.1  cert-manager.kubernetes.vmware.com/1.18.3+vmware.1-vks.1
+  vmware-system-vks-public  cert-manager  1.19.1+vmware.1-vks.1  cert-manager.kubernetes.vmware.com.1.19.1-vmware.1-vks.1  cert-manager.kubernetes.vmware.com/1.19.1+vmware.1-vks.1
+  vmware-system-vks-public  cert-manager  1.19.2+vmware.1-vks.1  cert-manager.kubernetes.vmware.com.1.19.2-vmware.1-vks.1  cert-manager.kubernetes.vmware.com/1.19.2+vmware.1-vks.1
 ```
 
 Install cert-manager using the commands below.
 ```bash
 ## Command to list the versions of cert-manager available
-vcf package available list cert-manager.tanzu.vmware.com -A
+vcf addon available list cert-manager
 
 ## Sample Output
-  NAMESPACE   NAME                           VERSION                 RELEASED-AT
-  tkg-system  cert-manager.tanzu.vmware.com  1.1.0+vmware.1-tkg.2    2020-11-24 18:00:00 +0000 UTC
-  tkg-system  cert-manager.tanzu.vmware.com  1.1.0+vmware.2-tkg.1    2020-11-24 18:00:00 +0000 UTC
-  tkg-system  cert-manager.tanzu.vmware.com  1.11.1+vmware.1-tkg.1   2023-01-11 12:00:00 +0000 UTC
-  tkg-system  cert-manager.tanzu.vmware.com  1.12.10+vmware.2-tkg.2  2023-06-15 12:00:00 +0000 UTC
-  tkg-system  cert-manager.tanzu.vmware.com  1.12.2+vmware.2-tkg.2   2023-06-15 12:00:00 +0000 UTC
-  tkg-system  cert-manager.tanzu.vmware.com  1.5.3+vmware.2-tkg.1    2021-08-23 17:22:51 +0000 UTC
-  tkg-system  cert-manager.tanzu.vmware.com  1.5.3+vmware.4-tkg.1    2021-08-23 17:22:51 +0000 UTC
+  NAMESPACE                 ADDONNAME     VERSION                ADDON-RELEASE-NAME                                        PACKAGE
+  vmware-system-vks-public  cert-manager  1.18.2+vmware.2-vks.2  cert-manager.kubernetes.vmware.com.1.18.2-vmware.2-vks.2  cert-manager.kubernetes.vmware.com/1.18.2+vmware.2-vks.2
+  vmware-system-vks-public  cert-manager  1.18.3+vmware.1-vks.1  cert-manager.kubernetes.vmware.com.1.18.3-vmware.1-vks.1  cert-manager.kubernetes.vmware.com/1.18.3+vmware.1-vks.1
+  vmware-system-vks-public  cert-manager  1.19.1+vmware.1-vks.1  cert-manager.kubernetes.vmware.com.1.19.1-vmware.1-vks.1  cert-manager.kubernetes.vmware.com/1.19.1+vmware.1-vks.1
+  vmware-system-vks-public  cert-manager  1.19.2+vmware.1-vks.1  cert-manager.kubernetes.vmware.com.1.19.2-vmware.1-vks.1  cert-manager.kubernetes.vmware.com/1.19.2+vmware.1-vks.1
 
 ## Command to install cert-manager
-vcf package install cert-manager --package cert-manager.tanzu.vmware.com --namespace <namespaceName> --version <1.12.10+vmware.2-tkg.2>
+vcf addon install create cert-manager --addon-release-name <cert-manager.kubernetes.vmware.com.1.19.1-vmware.1-vks.1> --namespace <namespaceName> --cluster-name <clusterName>
+
+## Sample command
+vcf addon install create cert-manager --addon-release-name cert-manager.kubernetes.vmware.com.1.19.1-vmware.1-vks.1 --namespace ns01 --cluster-name vks-cluster
+# Sample output
+Installing addon 'cert-manager' for cluster 'vks-cluster'. Are you sure? [y/N]: y
+Addon 'cert-manager' is being installed in the cluster vks-cluster
 
 ## Verify the cert-manager pods
 kubectl get pods -n cert-manager
+
+## Sample Output
 NAME                                       READY   STATUS    RESTARTS   AGE
-cert-manager-6778554f58-jhvb8              1/1     Running   0          54s
-cert-manager-cainjector-575468965b-xrzf4   1/1     Running   0          54s
-cert-manager-webhook-567f6945f-8m8d6       1/1     Running   0          54s
+cert-manager-7c7fcc8598-zcwc6              1/1     Running   0          26s
+cert-manager-cainjector-68c447777d-b92xj   1/1     Running   0          26s
+cert-manager-webhook-7b9544c879-t4pg8      1/1     Running   0          26s
 ```
 
 Note: In the sample commands provided, the cert-manager application will be deployed in the `namespaceName` namespace, with all required pods created in the `cert-manager` namespace. If a namespace named `cert-manager` already exists, the package deployment will use that existing namespace. If the package installation fails, label the `cert-manager` namespace with `pod-security.kubernetes.io/enforce=privileged` and delete all the ReplicaSets under the `cert-manager` namespace. This will prompt the deployment to recreate the ReplicaSets and the necessary pods.
