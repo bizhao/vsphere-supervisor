@@ -24,9 +24,9 @@ The data flow of packages, binaries, and images between the internet-connected a
 * **Tanzu Packages** Tanzu Packages enable administrators and users to add and manage standard services and add-ons on Kubernetes clusters using the Tanzu CLI or Carvel Custom Resources.
 
 ## Prerequisites
-This guide is for VCF / VVF deployments prior to 9.1.0, and an **Enterprise OCI-complaint registry** is assumed to be available in the air-gapped environment and accessible by all platform nodes, including the admin host. The registry must be accessible over HTTPS. The certificate can be signed by a trusted certificate authority or self-signed.
-**Note** If an Enterprise registry is unavailable in the air-gapped environment, please visit this [document](/airgapped/air-gapped-harbor.md) to install and configure Harbor as Bootstrap and Platform registries.
-For VCF / VVF 9.1.0 deployments, the distribution docker registry in software depot can be used as the OCI compliant registry to host OCI images for system services, please visit this [document](/airgapped/air-gapped-vcf91.md) to follow the VKS deployment guide for Air-Gapped Environments.
+* This guide is for VCF / VVF deployments based on pre-9.1.0 releases, and an **Enterprise OCI-complaint registry** is assumed to be available in the air-gapped environment and accessible by all platform nodes, including the admin host. The registry must be accessible over HTTPS. The certificate can be signed by a trusted certificate authority or self-signed.
+* **Note** If an Enterprise registry is unavailable in the air-gapped environment, please visit this [document](/airgapped/air-gapped-harbor.md) to install and configure Harbor as Bootstrap and Platform registries.
+* For VCF / VVF 9.1.0 deployments, the distribution docker registry in VCF Software Depot can be used as the OCI compliant registry to host OCI images for system services, please visit this [document](/airgapped/air-gapped-vcf91.md) to follow the VKS deployment guide for Air-Gapped Environments.
 
 ## Bill of Materials
 The table below provides sample hostnames and versions used throughout the document for easy reference -

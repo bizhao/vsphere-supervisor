@@ -7,7 +7,7 @@ The complete procedure to install a VKS cluster with additional VKS add-ons with
 - Enable the Supervisor.
 - Upload Kubernetes release OVAs to a Content Library.
 - Create vSphere Namespace(s) for VKS Clusters(s).
-- Configure the air-gapped Admin host in the air-gapped environment. 
+- Configure the air-gapped Admin host in the air-gapped environment.
 - Import OCI images of supervisor services or VKS add-ons to the distribution docker registry on Software Depot.
 - Install the relevant Supervisor Services.
 - Deploy the VKS Cluster(s).
@@ -15,7 +15,7 @@ The complete procedure to install a VKS cluster with additional VKS add-ons with
 
 The data flow of packages, binaries, and images between the internet-connected and air-gapped environment can be summarized by the picture below -
 
-![image](/airgapped/ocireg-dataflow.png)
+![image](/airgapped/depotreg-dataflow.png)
 
 ## Terminology
 * **Bastion Host** A host (preferably a Linux VM) that is connected to the Internet or has access to download packages, binaries, and images from the Internet.
@@ -24,8 +24,8 @@ The data flow of packages, binaries, and images between the internet-connected a
 * **VKS add-ons** VKS add-ons enable administrators and users to add and manage standard services and add-ons on Kubernetes clusters using the VCF CLI or Carvel Custom Resources.
 
 ## Prerequisites
-For VCF / VVF 9.1.0 deployments, the distribution docker registry in VCF Software Depot can be used as the OCI compliant registry to host OCI images for Supervisor Services and VKS add-ons, and please follow this VKS deployment guide for Air-Gapped Environments.
-For VCF / VVF deployments based on prior-9.1.0 releases, an Enterprise OCI-compliant registry is required, and please follow this [document](/airgapped/air-gapped.md) for VKS deployment in Air-Gapped environments.
+* This guide is for VCF / VVF 9.1.0 deployments, the distribution docker registry in VCF Software Depot can be used as the OCI compliant registry to host OCI images for Supervisor Services and VKS add-ons, and please follow this VKS deployment guide for Air-Gapped Environments.
+* For VCF / VVF deployments based on prior-9.1.0 releases, an Enterprise OCI-compliant registry is required, and please follow this [document](/airgapped/air-gapped.md) for VKS deployment in Air-Gapped environments.
 
 ## Bill of Materials
 The table below provides sample hostnames and versions used throughout the document for easy reference -
@@ -41,7 +41,7 @@ The table below provides sample hostnames and versions used throughout the docum
 |VKS Add-ons|3.6.0-20260211||
 |VKS Service|3.6.1||
 
-Additionally, it is crucial to have the following packages and binaries installed on both the Bastion and Admin Host - 
+Additionally, it is crucial to have the following packages and binaries installed on both the Bastion and Admin Host -
 * `wget`
 * `curl`
 * `docker` (Preferably from the Docker website [https://docs.docker.com/engine/install/])
@@ -50,7 +50,7 @@ Additionally, it is crucial to have the following packages and binaries installe
 * `openssl` for certificate generation and validations.
 * `imgpkg` to pull and push Carvel package images, install doc reference: [https://carvel.dev/imgpkg/docs/develop/install/#via-script-macos-or-linux].
 * `python3` to run the python 3 based image migration script, install doc reference: [https://www.python.org/downloads/].
-* Additional troubleshooting and diagnostic tools as needed. 
+* Additional troubleshooting and diagnostic tools as needed.
 
 ## 1. Download all required Plugins, Binaries, and Images
 This document utilizes an Ubuntu 24.04.4-based Bastion host (**bastion.internet.lab.test**) for this stage. Below are the key plugins and packages that must be downloaded, each playing a critical role in the platform deployment process.
@@ -114,9 +114,75 @@ spec:
 ####, E.g., Download ArgoCD Supervisor Service Binaries and associated YAML files.
 When writing this document, the latest version of the ArgoCD Supervisor Service is “1.1.0”. Please refer to ​​the vSphere Supervisor Services page on Broadcom Support Portal to check for the updated versions. There will be 2 configuration files for version 1.1.0: `supervisor-service-argocd-legacy-1.1.0-25166333.yml` and `supervisor-service-argocd-depot-1.1.0-25166333.yml`. Download both files required for the ArgoCD Supervisor Service. Locate the value of the image from the `supervisor-service-argocd-legacy-1.1.0-25166333.yml` file as described above. The second configuration file `supervisor-service-argocd-depot-1.1.0-25166333.yml` (without `legacy` in the name) is the configuration file that should be used to register and install ArgoCD Supervisor Service on a Supervisor 9.1.0 cluster.
 
-You can execute the following command from the Bastion host to download the image bundle as a tarball.
+You can execute the following command from the Bastion host to download the image bundle as a tarball via the [oci_image_depot_migrator.py python script](/airgapped/scripts/oci_image_depot_migrator.py). Note the script requires executable imgpkg CLI and python 3 runtime installed on the Baston host.
 
 ```bash
+## How to run oci_image_depot_imgrator.py migrator script.
+./oci_image_depot_migrator.py --help
+
+## Sample output
+usage: oci_image_depot_migrator.py [-h] -s REPO [-t FQDN] [--work-dir WORK_DIR] ACTION
+
+Migrate OCI images from projects.packages.broadcom.com to a target Software Depot.
+
+Action is a required positional argument:
+  download | upload | copy | map-target-repo
+
+Common options:
+  -s / --source-image-repo  REPO   always required
+  -t / --target-depot-fqdn  FQDN   required for upload, copy, map-target-repo
+  --work-dir DIR                   where tars and depot-ca.crt live (default: cwd)
+
+positional arguments:
+  ACTION                download | upload | copy | map-target-repo (see examples below).
+
+options:
+  -h, --help            show this help message and exit
+  -s REPO, --source-image-repo REPO
+                        Source bundle reference, e.g. projects.packages.broadcom.com/.../image:tag
+  -t FQDN, --target-depot-fqdn FQDN
+                        Target Software Depot FQDN. Required for upload, copy, and map-target-repo.
+  --work-dir WORK_DIR   Directory for .tar, depot-ca.crt, and imgpkg cwd. Default: current working directory.
+
+Actions:
+  download          Download OCI tars to local --work-dir.
+                    Uses imgpkg copy -b <REPO> --to-tar <derived>.tar.
+                    Requires -s. -t is not required. The tar is kept on disk.
+
+  upload            Upload an existing OCI tar to the target depot.
+                    Expects a tar under --work-dir whose name matches the one
+                    that download would produce for the same -s argument.
+                    Requires -s and -t. Tar and depot CA are deleted on success.
+
+  copy              Copy OCI images from source repo to target depot.
+                    Does download + upload in one run and expects connectivity to both source and target.
+                    Requires -s and -t. Temporary tar and depot CA are deleted on success.
+
+  map-target-repo   Print the target Software Depot repo URL for a given OCI image (no tag).
+                    Pure path conversion; does not run imgpkg to download or upload.
+                    Requires -s and -t.
+
+Tar naming:
+  Basename is derived from the last segment of the source reference.
+  ':' and unsafe characters are normalized.
+  Example: .../argocd-service:v1.1.0_vmware.1 -> argocd-service-v1.1.0_vmware.1.tar
+
+Examples:
+  oci_image_depot_migrator.py copy \
+      -s 'projects.packages.broadcom.com/.../argocd-service:v1.1.0_vmware.1' \
+      -t 'fleet-10-144-79-70.vcfd.broadcom.net'
+
+  oci_image_depot_migrator.py download \
+      -s 'projects.packages.broadcom.com/.../image:tag'
+
+  oci_image_depot_migrator.py upload \
+      -s 'projects.packages.broadcom.com/.../image:tag' \
+      -t 'fleet-10-144-79-70.vcfd.broadcom.net'
+
+  oci_image_depot_migrator.py map-target-repo \
+      -s 'projects.packages.broadcom.com/.../image:tag' \
+      -t 'fleet-10-144-79-70.vcfd.broadcom.net'
+
 ## Download ArgoCD Supervisor Service Binaries
 ./oci_image_depot_migrator.py download -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1
 
@@ -310,7 +376,9 @@ In a VCF deployment with VCF Automation installed, follow this [documentation](h
 All the Supervisor Services image bundle binaries downloaded in Step 1d must be uploaded to the Software Depot by using the provided [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) script. The same Software Depot FQDN is required for the upload.
 
 ```bash
-## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
+./oci_image_depot_migrator.py upload -s <supervisor-service-package-image-on-projects.packages.broadcom.com> -t <software-depot-fqdn>
+
+## Sample Command for ArgoCD Supervisor Service with example Software Depot FQDN as the target: fleet-10-144-79-70.vcfd.broadcom.net
 ./oci_image_depot_migrator.py upload -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 -t fleet-10-144-79-70.vcfd.broadcom.net
 
 ## Sample Output
@@ -335,10 +403,12 @@ copy | importing 6 images...
 ....
 ```
 
-In case the admin host is in DMZ and has connectivity to projects.packages.broadcom.com, the Contour Supervisor service images can be copied from projects.packages.broadcom.com directly to Software Depot.
+In case the admin host is in DMZ and has connectivity to projects.packages.broadcom.com, the Supervisor service images can be copied from projects.packages.broadcom.com directly to Software Depot.
 
 ```bash
-## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
+./oci_image_depot_migrator.py copy -s <supervisor-service-package-image-on-projects.packages.broadcom.com> -t <software-depot-fqdn>
+
+## Sample Command for ArgoCD Supervisor Service with example Software Depot FQDN as the target: fleet-10-144-79-70.vcfd.broadcom.net
 ./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 -t fleet-10-144-79-70.vcfd.broadcom.net
 ```
 
@@ -346,27 +416,31 @@ In case the admin host is in DMZ and has connectivity to projects.packages.broad
 The VKS Add-on package bundle, downloaded in Step 1c, must be uploaded to the distribution docker registry on Software Depot using the provided [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) python script. The upload command requires the Software Depot FQDN, which can be discovered by login to VCF OPS and navigate to Build --> Lifecycle --> VCF management --> Components page and identify the Fleet components FQDN.
 
 ```bash
-## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
+./oci_image_depot_migrator.py upload -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 -t <software-depot-fqdn>
+
+## Sample Command with example Software Depot FQDN as the target: fleet-10-144-79-70.vcfd.broadcom.net
 ./oci_image_depot_migrator.py upload -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 -t fleet-10-144-79-70.vcfd.broadcom.net
 ```
 
 In case the admin host is in DMZ and has connectivity to projects.packages.broadcom.com, the VKS Add-on packages can be copied from projects.packages.broadcom.com directly to Software Depot by using below command.
 
 ```bash
-## Sample Command with Software Depot FQDN: fleet-10-144-79-70.vcfd.broadcom.net
+./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 -t  <software-depot-fqdn>
+
+## Sample Command with example Software Depot FQDN as the target: fleet-10-144-79-70.vcfd.broadcom.net
 ./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 -t fleet-10-144-79-70.vcfd.broadcom.net
 ```
 
 ## 8. Deploy VKS Cluster(s)
 
 ### 8a. Update vSphere Kubernetes Service (VKS) to the latest version
-When writing the documentation, the latest VKS release was 3.6.3. Since each VKS release introduces additional features and fixes, we must apply these updates to make the new features and fixes available. This document will update the core VKS from 3.6.1 to 3.6.3, this requires VKS 3.6.3 binary tar and configuration yaml files are already downloaded to the Baston host and uploaded to the distribution docker registry on Software Depot by the steps above. Follow the relevant sections in the [documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vsphere-supervisor-services-and-standalone-components/latest/managing-vsphere-kubernetes-service/installing-and-upgrading-the-tkg-service/upgrade-the-tkg-service-version.html) to complete the upgrade. 
+When writing the documentation, the latest VKS release was 3.6.3. Since each VKS release introduces additional features and fixes, we must apply these updates to make the new features and fixes available. This document will update the core VKS from 3.6.1 to 3.6.3, this requires VKS 3.6.3 binary tar and configuration yaml files are already downloaded to the Baston host and uploaded to the distribution docker registry on Software Depot by the steps above. Follow the relevant sections in the [documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vsphere-supervisor-services-and-standalone-components/latest/managing-vsphere-kubernetes-service/installing-and-upgrading-the-tkg-service/upgrade-the-tkg-service-version.html) to complete the upgrade.
 
 ### 8b. Deploy a Workload Cluster
 Deploying a VKS Cluster (using an Ubuntu image). Review each section at a minimum and adjust the necessary fields as needed. Refer to the [“Workflow for Provisioning VKS Clusters Using kubectl” documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vsphere-supervisor-services-and-standalone-components/9-1/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/workflow-for-provisioning-tkg-clusters-using-kubectl.html) for more details
 and refer to the [cluster config yaml document](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vsphere-supervisor-services-and-standalone-components/9-1/managing-vsphere-kuberenetes-service-clusters-and-workloads/provisioning-tkg-service-clusters/using-the-cluster-v1beta1-api/using-the-versioned-clusterclass/v1beta1-example-default-cluster.html#GUID-2d377bf9-e51d-4e7d-b7dc-f7c892ad36ee-en_id-3e284ef2-486b-4a0c-9736-e292d2f83e36) for examples.
 
-While `v1beta1` or `v1beta2` provides numerous configuration options, the following additional variables may be added for a default `podSecurityStandard`. 
+While `v1beta1` or `v1beta2` provides numerous configuration options, the following additional variables may be added for a default `podSecurityStandard`.
 ```yaml
 ## vksConfig.yaml
 ...
