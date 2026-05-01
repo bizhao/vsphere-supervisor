@@ -1,17 +1,17 @@
 # VKS Deployment Guide for VCF 9.1.0 Air-Gapped Environments
 
 ## Introduction
-The complete procedure to install a VKS cluster with additional VKS add-ons within an air-gapped environment involves the following significant steps:
+The complete procedure to install a VKS cluster with additional VKS Standard Packages within an air-gapped environment involves the following significant steps:
 
 - Copy the relevant files and binaries to be moved to the air-gapped environment.
 - Enable the Supervisor.
 - Upload Kubernetes release OVAs to a Content Library.
 - Create vSphere Namespace(s) for VKS Clusters(s).
 - Configure the air-gapped Admin host in the air-gapped environment.
-- Import OCI images of supervisor services or VKS add-ons to the distribution docker registry on Software Depot.
+- Import OCI images of supervisor services or VKS Standard Packages to the distribution docker registry on Software Depot.
 - Install the relevant Supervisor Services.
 - Deploy the VKS Cluster(s).
-- Deploy the VKS add-ons on the VKS Cluster(s).
+- Deploy the VKS Standard Packages on the VKS Cluster(s).
 
 The data flow of packages, binaries, and images between the internet-connected and air-gapped environment can be summarized by the picture below -
 
@@ -21,10 +21,10 @@ The data flow of packages, binaries, and images between the internet-connected a
 * **Bastion Host** A host (preferably a Linux VM) that is connected to the Internet or has access to download packages, binaries, and images from the Internet.
 * **Admin Host** A host (preferably a Linux VM) within the air-gapped environment without internet access. The Admin host generally has network connectivity to all the hosts in the air-gapped environment. Files downloaded from the Internet to the Bastion host are transferred to the Admin Machine, and administrators can use it to interact with the platform.
 * **VCF CLI** A plugin-based CLI that is used to interact with the Supervisor and VKS clusters
-* **VKS add-ons** VKS add-ons enable administrators and users to add and manage standard services and add-ons on Kubernetes clusters using the VCF CLI or Carvel Custom Resources.
+* **VKS Standard Packages** VKS Standard Packages enable administrators and users to add and manage standard services and add-ons on Kubernetes clusters using the VCF CLI or Carvel Custom Resources.
 
 ## Prerequisites
-* This guide is for VCF / VVF 9.1.0 deployments, the distribution docker registry in VCF Software Depot can be used as the OCI compliant registry to host OCI images for Supervisor Services and VKS add-ons, and please follow this VKS deployment guide for Air-Gapped Environments.
+* This guide is for VCF / VVF 9.1.0 deployments, the distribution docker registry in VCF Software Depot can be used as the OCI compliant registry to host OCI images for Supervisor Services and VKS Standard Packages, and please follow this VKS deployment guide for Air-Gapped Environments.
 * For VCF / VVF deployments based on prior-9.1.0 releases, an Enterprise OCI-compliant registry is required, and please follow this [document](/airgapped/air-gapped.md) for VKS deployment in Air-Gapped environments.
 
 ## Bill of Materials
@@ -38,12 +38,13 @@ The table below provides sample hostnames and versions used throughout the docum
 |ESXi|9.1.0|esxi[0..xxx].env1.lab.test|
 |Supervisor|9.1.0|supervisor0.env1.lab.test|
 |VKS cluster|1.34.2|workload-vsphere-vks1|
-|VKS Add-ons|3.6.0-20260211||
+|VKS Standard Packages|3.6.0-20260211||
 |VKS Service|3.6.1||
 
 Additionally, it is crucial to have the following packages and binaries installed on both the Bastion and Admin Host -
 * `wget`
 * `curl`
+* `ssh` & `sshpass`
 * `docker` (Preferably from the Docker website [https://docs.docker.com/engine/install/])
 * `jq`
 * `yq` (Some Linux distributions come with their implementation of yq. These packages are not the latest and/or provide the full functionalities. The newest version of the yq package can be downloaded from [https://github.com/mikefarah/yq/releases])
@@ -255,8 +256,14 @@ The table below provides the sample list of Supervisor Services that can be down
 |Metrics Aggregator|Standard|0.1.0|
 |Supervisor Management Proxy|Standard|0.4.1|
 
-### 1d. VKS Add-ons
-VKS add-ons enable administrators and users to use the VCF CLI or Carvel Custom Resources to add and manage standard services and add-ons on Kubernetes clusters. With VKS add-ons, you can deploy various add-ons to VKS Clusters, such as cert-manager, Contour, Prometheus, Grafana, and more. Download the relevant the VKS add-on bundle using the following command via the [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) python script, which will download the OCI images as tar
+If this air-gapped environment doesn't have VCF Automation installed, it's required to download Harbor Supervisor Service images and install later after the images are upload the OCI registry on Software Depot. Below is the command to download the Harbor package image released with VCF 9.1.0. The legacy package yaml for Harbor Supervisor Service released with VCF 9.1.0 has this name: legacy-harbor-svs-v2.14.2+vmware.2-vks.1-25220498.yml, and the yaml to be used with Software Depot is harbor-svs-v2.14.2+vmware.2-vks.1-25220498.yml.
+```bash
+./oci_image_depot_migrator.py download -s projects.packages.broadcom.com/vsphere/supervisor/harbor-service/2.14.2/harbor:v2.14.2_vmware.2-vks.1
+
+```
+
+### 1d. VKS Standard Packages
+VKS Standard Packages enable administrators and users to use the VCF CLI or Carvel Custom Resources to add and manage standard services and add-ons on Kubernetes clusters. With VKS Standard Packages, you can deploy various add-ons to VKS Clusters, such as cert-manager, Contour, Prometheus, Grafana, and more. Download the relevant the VKS add-on bundle using the following command via the [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) python script, which will download the OCI images as tar
 file vks-standard-packages-3.6.0-20260211.tar into the local script directory -
 
 ```bash
@@ -366,13 +373,9 @@ export TASK_ID=$(curl -k -XPOST -H"Authorization: Bearer ${TOKEN}" ${PLATFORM_HO
 until [ "$(curl -ks -H "Authorization: Bearer ${TOKEN}" ${PLATFORM_HOST}/api/v1/tasks/${TASK_ID} | jq -r '.status')" == "Succeeded" ]; do echo "Still waiting..."; sleep 5; done
 ```
 
-## 6. Ensure regional Harbor is configured on Supervisor.
+## 6. Upload Packages to the Software Depot
 
-In a VCF deployment with VCF Automation installed, follow this [documentation](https://author-techdocs2-prod.adobecqms.net/content/output/sites/docworks-preview/installing-and-configuring-supervisor-services-ditamap/using-harbor-as-vcf-service/using-harbor-as-a-vcf-service.html?wcmmode=disabled) to install and configure regional Harbor as a VCF service on a Supervisor in a VCF region. If the VCF deployment doesn't have VCF Automation or it's a VVF deployment, follow this [documentation](https://author-techdocs2-prod.adobecqms.net/content/output/sites/docworks-preview/instaiing-and-configuring-supervisor-services-ditamap/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour/deploy-harbor-supervisor-service-in-vvf-without-vcfa.html?wcmmode=disabled) to manually install Harbor Supervisor Service on the Supervisor.
-
-## 7. Upload Packages to the Software Depot
-
-### 7a. Upload Supervisor Services to the distributon registry on Software Depot
+### 6a. Upload Supervisor Services to the distributon registry on Software Depot
 All the Supervisor Services image bundle binaries downloaded in Step 1d must be uploaded to the Software Depot by using the provided [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) script. The same Software Depot FQDN is required for the upload.
 
 ```bash
@@ -412,7 +415,7 @@ In case the admin host is in DMZ and has connectivity to projects.packages.broad
 ./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/argocd-service/1.1.0/argocd-service:v1.1.0_vmware.1 -t fleet-10-144-79-70.vcfd.broadcom.net
 ```
 
-### 7b. Upload VKS Add-on Packages to the distributon registry on Software Depot
+### 6b. Upload VKS Standard Packages to the distributon registry on Software Depot
 The VKS Add-on package bundle, downloaded in Step 1c, must be uploaded to the distribution docker registry on Software Depot using the provided [oci_image_depot_migrator.py](scripts/oci_image_depot_migrator.py) python script. The upload command requires the Software Depot FQDN, which can be discovered by login to VCF OPS and navigate to Build --> Lifecycle --> VCF management --> Components page and identify the Fleet components FQDN.
 
 ```bash
@@ -430,6 +433,102 @@ In case the admin host is in DMZ and has connectivity to projects.packages.broad
 ## Sample Command with example Software Depot FQDN as the target: fleet-10-144-79-70.vcfd.broadcom.net
 ./oci_image_depot_migrator.py copy -s projects.packages.broadcom.com/vsphere/supervisor/vks-standard-packages/3.6.0-20260211/vks-standard-packages:3.6.0-20260211 -t fleet-10-144-79-70.vcfd.broadcom.net
 ```
+
+If this air-gapped environment doesn't have VCF Automation installed, it's required to upload Harbor Supervisor Service images to the OCI registry on Software Depot. Below is the command to upload the Harbor package image released with VCF 9.1.0.
+```bash
+./oci_image_depot_migrator.py upload -s projects.packages.broadcom.com/vsphere/supervisor/harbor-service/2.14.2/harbor:v2.14.2_vmware.2-vks.1  -t <software-depot-fqdn>
+
+```
+
+## 7. Ensure regional Harbor is configured on Supervisor.
+
+In a VCF deployment with VCF Automation installed, follow this [documentation](https://author-techdocs2-prod.adobecqms.net/content/output/sites/docworks-preview/installing-and-configuring-supervisor-services-ditamap/using-harbor-as-vcf-service/using-harbor-as-a-vcf-service.html?wcmmode=disabled) to install and configure regional Harbor as a VCF service on a Supervisor in a VCF region. Once regional Harbor is installed and configured, and the corresponding Supervisor Service images or
+VKS standard packages images are uploaded to the OCI registy in Software Depot, Supervisor Services and VKS Standard Packages (Add-ons) can be installed in the same way as in online environments.
+
+If the VCF deployment doesn't have VCF Automation or it's a VVF deployment, you can follow this [documentation](https://author-techdocs2-prod.adobecqms.net/content/output/sites/docworks-preview/instaiing-and-configuring-supervisor-services-ditamap/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour/deploy-harbor-supervisor-service-in-vvf-without-vcfa.html?wcmmode=disabled) to manually install Harbor Supervisor Service on the Supervisor, with additional
+prerequisite configuration on the Supervisor and a Harbor Supervisor Service package yaml update as follows:
+
+### 7a. Configure a managment proxy on a Supervisor to support pulling Harbor Supervisor Service images from Software Depot.
+
+The Software Depot is on the management network, hence a management proxy is needed in order to pull uploaded images for Harbor Supervisor Service from Software Depot. This [bash script](airgapped/scripts/manage-depot-image-proxy.sh) supports adding and removing a management proxy to Software Depot on a Supervisor in a vCenter, it requires the Software Depot endpoint is already configured on the vCenter and needs VC, Supervisor info, and necessary login credentials.
+```bash
+./manage-depot-image-proxy.sh -h
+
+## Sample Output
+Usage:
+  manage-depot-image-proxy.sh add    VC_HOST VC_ROOT_SSH_PASSWORD VC_ADMIN_USER VC_ADMIN_PASSWORD SUPERVISOR_ID
+  manage-depot-image-proxy.sh remove VC_HOST VC_ROOT_SSH_PASSWORD VC_ADMIN_USER VC_ADMIN_PASSWORD SUPERVISOR_ID
+
+  VC_HOST                 vCenter hostname or IP (SSH as root; also REST https host)
+  VC_ROOT_SSH_PASSWORD    root password for sshpass to vCenter
+  VC_ADMIN_USER           vCenter API user (e.g. administrator@vsphere.local)
+  VC_ADMIN_PASSWORD       vCenter API password
+  SUPERVISOR_ID           Supervisor ID for container-image-registries
+
+Requires: ssh, sshpass on your workstation (vCenter hop). On vCenter: sshpass must also be
+installed for CP hops (password from decryptK8Pwd.py PWD: line). Passwords may be visible
+in process listings; quote arguments that contain shell metacharacters.
+
+VC_ROOT_SSH_PASSWORD is only for workstation -> vCenter (root). Supervisor CP root SSH from
+vCenter uses the PWD value from /usr/lib/vmware-wcp/decryptK8Pwd.py for the matched cluster.
+
+Options:
+  -h, --help    Show this message
+
+## Command to add a management proxy to a Supervisor
+./manage-depot-image-proxy.sh add <VC_HOST> <VC_ROOT_SSH_PASSWORD> <VC_ADMIN_USER> <VC_ADMIN_PASSWORD> <SUPERVISOR_ID>
+
+## Sample command and output
+./manage-depot-image-proxy.sh add 10.161.117.40 'OOKMwN_Kp_r8wlg8' administrator@vsphere.local 'OOKMwN_Kp_r8wlg8' 284256be-074e-4750-8c9b-f57dfea4fb0a
+Warning: Permanently added '10.161.117.40' (ED25519) to the list of known hosts.
+
+VMware vCenter Server
+Release: 9.1.0.0
+Version: 9.1.0.0
+Build: 25370922
+Type: vCenter Server with an embedded Platform Services Controller
+
+Supervisor topology clusters: domain-c52
+Matched cluster_id=domain-c52 floating_ip=10.161.112.94 (CP SSH uses decrypt PWD:)
+CP management IPs (3): 10.161.119.189 10.161.115.81 10.161.117.145
+Generated CA and server cert in /tmp/depot-image-proxy.mA5QH9
+Configuring CP 10.161.119.189 ...
+Warning: Permanently added '10.161.119.189' (ECDSA) to the list of known hosts.
+Welcome to Supervisor on vSphere Zones!
+Warning: Permanently added '10.161.119.189' (ECDSA) to the list of known hosts.
+Welcome to Supervisor on vSphere Zones!
+service/depot-image-proxy created
+deployment.apps/coredns restarted
+Done CP 10.161.119.189
+Configuring CP 10.161.115.81 ...
+Warning: Permanently added '10.161.115.81' (ECDSA) to the list of known hosts.
+Welcome to Supervisor on vSphere Zones!
+Warning: Permanently added '10.161.115.81' (ECDSA) to the list of known hosts.
+Welcome to Supervisor on vSphere Zones!
+service/depot-image-proxy unchanged
+deployment.apps/coredns restarted
+Done CP 10.161.115.81
+Configuring CP 10.161.117.145 ...
+Warning: Permanently added '10.161.117.145' (ECDSA) to the list of known hosts.
+Welcome to Supervisor on vSphere Zones!
+Warning: Permanently added '10.161.117.145' (ECDSA) to the list of known hosts.
+Welcome to Supervisor on vSphere Zones!
+service/depot-image-proxy unchanged
+deployment.apps/coredns restarted
+Done CP 10.161.117.145
+Registered depot-registry with supervisor 284256be-074e-4750-8c9b-f57dfea4fb0a (HTTP 201)
+All steps finished (add).
+```
+
+### 7b. Update the image reference in Harbor Supervisor Service package yaml.
+The Harbor package yaml that is downloaded in step 1c: harbor-svs-v2.14.2+vmware.2-vks.1-25220498.yml needs to have the image reference updated so the images can be pulled from Software Depot. 
+```yaml
+      fetch:
+        - imgpkgBundle:
+            image: "depot.kube-system.svc/vcf/vcf-supervisor-services/supervisor-service-harbor/ga/2.14.2/harbor:v2.14.2_vmware.2-vks.1"
+```
+
+The above image reference should be updated with "depot-image-proxy.kube-system.svc.cluster.local/vcf-supervisor-services/supervisor-service-harbor/ga/2.14.2/harbor:v2.14.2_vmware.2-vks.1". After the yaml is updated, you can register this Harbor package yaml on the vCenter, then follow the above mentioned [documentation](https://author-techdocs2-prod.adobecqms.net/content/output/sites/docworks-preview/instaiing-and-configuring-supervisor-services-ditamap/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour/deploy-harbor-supervisor-service-in-vvf-without-vcfa.html?wcmmode=disabled) to install Harbor Supervisor Service on the Supervisor and configure Software Depot as the upstream registry for Supervisor Service and other component images.
 
 ## 8. Deploy VKS Cluster(s)
 
