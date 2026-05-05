@@ -330,10 +330,17 @@ vcf context use supervisor1:ns01
 
 ### 5c. Enable OCI image upload on Software Depot
 
-The Software Depot in VCF Fleet runs a distribution docker registry, which doesn't allow OCI image push by default. Follow the following steps to enable OCI image upload on Fleet Software Depot.
+The Software Depot in VCF Fleet runs a distribution docker registry, which doesn't allow OCI image push by default. Use the [toggle_software_depot_oci_image_upload.sh script](scripts/toggle_software_depot_oci_image_upload.sh) to enable OCI image upload on Fleet Software Depot. The script requires the VSP FQDN and the VCF Operations admin user credentials. The VSP FQDN can be discovered on VCF Ops UI after login by navigating to Build --> Lifecycle --> VCF management --> Components --> VSP.
 
-#### 5c1. Create a config JSON file as config.json with the following config
-```
+```bash
+./toggle_software_depot_oci_image_upload.sh enable --vsp-host <vsp-host-fqdn> --ops-admin-username <ops-admin-username>  --ops-admin-password ''<ops-admin-password>'
+
+## Sample command to enable OCI image upload on Software Depot
+./toggle_software_depot_oci_image_upload.sh enable --vsp-host vcf-stls-wcp-pod13-136.lvn.broadcom.net --ops-admin-username 'admin'  --ops-admin-password 'Test!23Test!23'
+
+Mode: enable (offlineWriteEnabled=true)
+VSP URL: https://vcf-stls-wcp-pod13-136.lvn.broadcom.net
+Payload:
 {
   "spec": {
     "configuration": {
@@ -343,34 +350,19 @@ The Software Depot in VCF Fleet runs a distribution docker registry, which doesn
     }
   }
 }
-```
 
-#### 5c2. Apply the config.json to Software Depot via API by following commands below after login to VCF Ops
-```
-# Discover the VCF services runtime FQDN by login to VCF Ops and navigate to Build --> Lifecycle --> VCF management --> Components, and export as env variable.
-export PLATFORM_HOST=https://<VCF_SERVICES_RUNTIME_FQDN>;
+==> Logging in to obtain access token...
+==> Looking up vcf-fleet-depot component id...
+    vcf-fleet-depot id: 0da90acd-84e7-498a-9cb0-8d0990c9a30c
+==> Applying configuration update...
+    task id: txrzuhy23zfipp4vnp54cvmzoe
+==> Waiting for task to complete...
+Still waiting for task to be done... (current status: Pending)
+Still waiting for task to be done... (current status: Pending)
+...
+Still waiting for task to be done... (current status: Running)
+Software Depot config update is success!
 
-# Export Ops admin and password as env variable.
-export ADMIN_PASSWORD='<OPS_ADMIN_PASSWORD>';
-export ADMIN_USERNAME='<OPS_ADMIN_USERNAME>';
-
-# Get access token via the Ops admin login.
-export TOKEN=`curl -k -XPOST  ${PLATFORM_HOST}/api/v1/identity/token \
-  --header 'Content-Type: application/x-www-form-urlencoded' \
-  --data grant_type=password \
-  --data "username=${ADMIN_USERNAME}" \
-  --data "password=${ADMIN_PASSWORD}" | jq -r '.access_token'`;
-
-echo "token is $TOKEN";
-
-# Discover the component ID of the `vcf-fleet-depot` component.
-export VCF_FLEET_DEPOT_COMPONENT_ID=$(curl -H"Authorization: Bearer ${TOKEN}" -k ${PLATFORM_HOST}/api/v1/components | jq -r '.components[] | select(.name == "vcf-fleet-depot") | .id')
-
-# Apply the config to the Software Depot, this will return a task ID.
-export TASK_ID=$(curl -k -XPOST -H"Authorization: Bearer ${TOKEN}" ${PLATFORM_HOST}/api/v1/components/${VCF_FLEET_DEPOT_COMPONENT_ID}?action=apply -d @./config.json | jq -r '.id')
-
-# monitor the task until the task status returns succeeded.
-until [ "$(curl -ks -H "Authorization: Bearer ${TOKEN}" ${PLATFORM_HOST}/api/v1/tasks/${TASK_ID} | jq -r '.status')" == "Succeeded" ]; do echo "Still waiting..."; sleep 5; done
 ```
 
 ## 6. Upload Packages to the Software Depot

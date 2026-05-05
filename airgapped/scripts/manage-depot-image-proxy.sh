@@ -1,7 +1,4 @@
 #!/bin/bash
-# Copyright (c) 2026 Broadcom. All Rights Reserved.
-# Broadcom Confidential. The term "Broadcom" refers to Broadcom Inc.
-# and/or its subsidiaries.
 #
 # Run from a workstation that has ssh(1) and sshpass(1). The script SSHs to the
 # vCenter appliance as root (password via sshpass), then on vCenter:
