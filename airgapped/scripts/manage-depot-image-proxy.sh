@@ -6,9 +6,9 @@
 # add:
 #   - Resolves cluster via GET .../supervisors/<id>/topology (zone cluster list) and
 #     /usr/lib/vmware-wcp/decryptK8Pwd.py: first cluster id from decrypt output that appears
-#     in topology is used for GET .../clusters/<id> api_servers and CP IP filtering.
+#     in topology is used for GET .../clusters/<id> api_servers and Control Plane VM IP filtering.
 #   - Generates a local CA and server cert for depot-image-proxy.kube-system.svc.cluster.local.
-#   - On each CP: TLS, nginx conf.d (listen 5005): map+realm rewrite for Bearer www-authenticate, Artifactory token auth location,
+#   - On each Control Plane: TLS, nginx conf.d (listen 5005): map+realm rewrite for Bearer www-authenticate, Artifactory token auth location,
 #     vcf-depot CA, LoadBalancer Service (port 443 -> target 5005), then
 #     waits for LB ingress IP and appends depot FQDN -> IP to /etc/vmware/wcp/coredns/hosts (script markers), chmod 644 hosts,
 #     rollout restart kube-system/coredns, static pod bounce.
@@ -16,8 +16,8 @@
 #     using CreateSpec: name, default_registry, image_registry { hostname, port, certificate_chain, ... }.
 #
 # remove:
-#   - Same cluster / CP discovery as add, then if depot-registry exists on the supervisor, DELETE it via vCenter API.
-#   - On each CP: remove 30-depot-images.conf, depot TLS files, script-managed CoreDNS hosts block (chmod 644 if present), rollout
+#   - Same cluster / Control Plane VM discovery as add, then if depot-registry exists on the supervisor, DELETE it via vCenter API.
+#   - On each Control Plane: remove 30-depot-images.conf, depot TLS files, script-managed CoreDNS hosts block (chmod 644 if present), rollout
 #     restart kube-system/coredns, Service, bounce static pod.
 #
 # Usage:
@@ -26,7 +26,7 @@
 #
 # VC_HOST is used for SSH (root) and for https://VC_HOST/api/... REST calls from vCenter.
 #
-# CP SSH (vCenter -> each Supervisor CP): root password is the PWD: value from the same
+# Control Plane VM SSH (vCenter -> each Supervisor Control Plane VM): root password is the PWD: value from the same
 # decryptK8Pwd.py output as the matched cluster (after Cluster: and IP:). sshpass must be
 # installed on vCenter for these hops.
 
@@ -47,10 +47,10 @@ Usage:
   SUPERVISOR_ID           Supervisor ID for container-image-registries
 
 Requires: ssh, sshpass on your workstation (vCenter hop). On vCenter: sshpass must also be
-installed for CP hops (password from decryptK8Pwd.py PWD: line). Passwords may be visible
+installed for Control Plane VM hops (password from decryptK8Pwd.py PWD: line). Passwords may be visible
 in process listings; quote arguments that contain shell metacharacters.
 
-VC_ROOT_SSH_PASSWORD is only for workstation -> vCenter (root). Supervisor CP root SSH from
+VC_ROOT_SSH_PASSWORD is only for workstation -> vCenter (root). Supervisor Control Plane VM root SSH from
 vCenter uses the PWD value from /usr/lib/vmware-wcp/decryptK8Pwd.py for the matched cluster.
 
 Options:
@@ -138,10 +138,10 @@ uri_path_escape() {
     printf '%s' "$1" | jq -sRr @uri
 }
 
-# sshpass + password auth to each CP (BatchMode=no so password auth is allowed).
+# sshpass + password auth to each Control Plane VM (BatchMode=no so password auth is allowed).
 setup_cp_ssh() {
     command -v sshpass >/dev/null 2>&1 || die "sshpass is required on vCenter for CP SSH (install sshpass on the appliance)"
-    [[ -n "${CP_ROOT_PASSWORD}" ]] || die "CP root password empty (missing PWD: line after IP for matched cluster in ${K8S_DECRYPT_CMD} output)"
+    [[ -n "${CP_ROOT_PASSWORD}" ]] || die "Control Plane VM root password empty (missing PWD: line after IP for matched cluster in ${K8S_DECRYPT_CMD} output)"
     SSH_CP=(
         sshpass -p "${CP_ROOT_PASSWORD}"
         ssh
@@ -248,7 +248,7 @@ discover_cluster_id_and_float_from_topology() {
     [[ -n "${FLOAT_IP}" ]] || die "No floating IP paired with matched cluster in decrypt output"
     [[ -n "${CP_ROOT_PASSWORD}" ]] || die "No PWD for matched cluster in ${K8S_DECRYPT_CMD} output (expected PWD: after IP: for that cluster)"
     setup_cp_ssh
-    log "Matched cluster_id=${CLUSTER_ID} floating_ip=${FLOAT_IP} (CP SSH uses decrypt PWD:)"
+    log "Matched cluster_id=${CLUSTER_ID} floating_ip=${FLOAT_IP}
 }
 
 discover_cp_ips() {
@@ -262,8 +262,8 @@ discover_cp_ips() {
     mapfile -t CP_IPS < <(printf '%s' "${resp}" | jq -r --arg fp "${FLOAT_IP}" --arg p "${prefix}" \
         '.api_servers[]? | select(type=="string") | select(startswith($p) and . != $fp)') \
         || die "jq failed parsing api_servers"
-    ((${#CP_IPS[@]} > 0)) || die "No CP IPs after filtering (prefix ${prefix}, exclude ${FLOAT_IP})"
-    log "CP management IPs (${#CP_IPS[@]}): ${CP_IPS[*]}"
+    ((${#CP_IPS[@]} > 0)) || die "No control plane VM IPs after filtering (prefix ${prefix}, exclude ${FLOAT_IP})"
+    log "Control Plane VM management IPs (${#CP_IPS[@]}): ${CP_IPS[*]}"
 }
 
 registry_list_url() {
@@ -681,18 +681,18 @@ discover_cp_ips
 if [[ "${OPERATION}" == "add" ]]; then
     gen_depot_tls
     for cp in "${CP_IPS[@]}"; do
-        log "Configuring CP ${cp} ..."
+        log "Configuring control plane VM ${cp} ..."
         scp_tls_and_tpl "${cp}"
         remote_install_on_cp "${cp}"
-        log "Done CP ${cp}"
+        log "Done control plane VM ${cp}"
     done
     register_supervisor_registry
 elif [[ "${OPERATION}" == "remove" ]]; then
     unregister_depot_registry
     for cp in "${CP_IPS[@]}"; do
-        log "Removing depot proxy from CP ${cp} ..."
+        log "Removing depot proxy from control plane VM ${cp} ..."
         remote_remove_on_cp "${cp}"
-        log "Done CP ${cp}"
+        log "Done control plane VM ${cp}"
     done
 else
     die "Unknown operation: ${OPERATION}"

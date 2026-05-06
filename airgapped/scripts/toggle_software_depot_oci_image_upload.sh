@@ -5,9 +5,12 @@
 #
 # Usage:
 #   ./toggle_software_depot_oci_image_upload.sh <enable|disable> \
-#       --vsp-host           vsp.example.com \
-#       --ops-admin-username admin@vsp.local \
-#       --ops-admin-password '...'
+#       --vsp-host       vsp.example.com \
+#       --admin-username admin@vsp.local \
+#       --admin-password '...'
+#
+# --admin-username / --admin-password are the VMSP admin user's credentials
+# (used to obtain an access token from the VSP /api/v1/identity/token endpoint).
 #
 # --vsp-host accepts a hostname (with optional :port and path); the script
 # always uses https://<host>. Any leading scheme you pass is stripped.
@@ -23,14 +26,16 @@ usage() {
   cat <<'EOF'
 Usage:
   toggle_software_depot_oci_image_upload.sh <enable|disable> \
-      --vsp-host           <vsp-host>                  \
-      --ops-admin-username <user@domain>                    \
-      --ops-admin-password <password>
+      --vsp-host       <vsp-host>                            \
+      --admin-username <vmsp-admin-user>                     \
+      --admin-password <vmsp-admin-password>
 
 Options:
   -h, --help                 Show this help.
 
 Notes:
+  * --admin-username / --admin-password are the VMSP admin user's
+    credentials, used to obtain an access token via the VSP identity API.
   * --vsp-host should be a hostname (e.g. vsp-10-1-2-3.example.com).
     The script will use https://<host>; any leading scheme you pass is stripped.
 
@@ -42,8 +47,8 @@ EOF
 
 MODE=""
 VSP_HOST=""
-OPS_ADMIN_USERNAME=""
-OPS_ADMIN_PASSWORD=""
+ADMIN_USERNAME=""
+ADMIN_PASSWORD=""
 
 # First positional must be enable|disable; everything else is --flag value
 while [[ $# -gt 0 ]]; do
@@ -56,10 +61,10 @@ while [[ $# -gt 0 ]]; do
       MODE="$1"; shift ;;
     --vsp-host)
       VSP_HOST="${2:-}"; shift 2 ;;
-    --ops-admin-username)
-      OPS_ADMIN_USERNAME="${2:-}"; shift 2 ;;
-    --ops-admin-password)
-      OPS_ADMIN_PASSWORD="${2:-}"; shift 2 ;;
+    --admin-username)
+      ADMIN_USERNAME="${2:-}"; shift 2 ;;
+    --admin-password)
+      ADMIN_PASSWORD="${2:-}"; shift 2 ;;
     -h|--help)
       usage; exit 0 ;;
     *)
@@ -69,7 +74,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$MODE" || -z "$VSP_HOST" || -z "$OPS_ADMIN_USERNAME" || -z "$OPS_ADMIN_PASSWORD" ]]; then
+if [[ -z "$MODE" || -z "$VSP_HOST" || -z "$ADMIN_USERNAME" || -z "$ADMIN_PASSWORD" ]]; then
   echo "Error: missing required arguments." >&2
   usage >&2
   exit 1
@@ -117,8 +122,8 @@ echo "==> Logging in to obtain access token..."
 TOKEN="$(curl -k -sS -XPOST "${VSP_URL}/api/v1/identity/token" \
   --header 'Content-Type: application/x-www-form-urlencoded' \
   --data grant_type=password \
-  --data "username=${OPS_ADMIN_USERNAME}" \
-  --data "password=${OPS_ADMIN_PASSWORD}" \
+  --data "username=${ADMIN_USERNAME}" \
+  --data "password=${ADMIN_PASSWORD}" \
   | jq -r '.access_token // empty')"
 
 if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
