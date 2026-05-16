@@ -59,8 +59,8 @@ In addition, the following packages and binaries should be installed on both the
 ## 1. Download all required plugins, binaries, and images
 This stage uses the Ubuntu 24.04.4-based Bastion host (**bastion.internet.lab.test**). The following plugins, binaries, and packages must be downloaded; each plays a role in the platform deployment process.
 
-### 1a. vSphere Kubernetes Release OVA files
-vSphere Kubernetes Releases (VKR) provide the Kubernetes software distribution for VKS clusters. VMware distributes Kubernetes releases as virtual machine templates, which you synchronize with the platform using a vCenter Content Library. Download the latest Kubernetes release files from https://wp-content.broadcom.com/v2/latest/. The versions to download depend on your workload requirements; we recommend downloading three or more of the latest versions. Follow [Step #3 in the official documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/administering-kubernetes-releases-for-tkg-service-clusters/create-a-local-content-library-for-air-gapped-cluster-provisioning.html) to download the appropriate Kubernetes release files for each version. The VKR shipped with VCF 9.1.0 is version 1.34.2.
+### 1a. VMware vSphere Kubernetes release OVA files
+VMware vSphere Kubernetes releases (VKrs) provide the Kubernetes software distribution for VKS clusters. VMware distributes Kubernetes releases as virtual machine templates, which you synchronize with the platform using a vCenter Content Library. Download the latest Kubernetes release files from https://wp-content.broadcom.com/v2/latest/. The versions to download depend on your workload requirements; we recommend downloading three or more of the latest versions. Follow [Step #3 in the official documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/managing-vsphere-kubernetes-service/administering-kubernetes-releases-for-tkg-service-clusters/create-a-local-content-library-for-air-gapped-cluster-provisioning.html) to download the appropriate Kubernetes release files for each version. The VKR shipped with VCF 9.1.0 is version 1.34.2.
 
 ### 1b. VCF CLI and Plugins
 The VCF CLI and its plugins are first installed on the Bastion host (`bastion.internet.lab.test`); the same tarballs are then transferred to the Admin host and installed there. At the time of writing, VCF CLI 9.1.0 is the supported version for vSphere and Supervisor 9.1.0.
@@ -83,9 +83,16 @@ sudo install ./vcf-cli-linux_amd64 /usr/local/bin/vcf
 ## Verify the installation
 vcf version
 
+## Sample output
+version: v9.1.0.0.25296329
+buildDate: 2026-03-20
+sha: 987b58e
+releaseType: ga
+arch: amd64
+
 ## Install the desired VCF CLI plugins on the bastion host from the plugin bundle
 mkdir -p ~/vcf-plugin-bundle
-tar -xvzf VCF-Consumption-CLI-PluginBundle-Linux_AMD64-9.1.0.tar.gz -C ~/vcf-plugin-bundle/
+tar -xvzf VCF-Consumption-CLI-PluginBundle-Linux_AMD64-9.1.0.0.25305443.tar.gz -C ~/vcf-plugin-bundle/
 
 ## Install a single plugin (example: addon) or all plugins
 vcf plugin install addon  --local-source ~/vcf-plugin-bundle/
@@ -93,6 +100,14 @@ vcf plugin install all --local-source ~/vcf-plugin-bundle/
 
 ## Verify the plugins are installed
 vcf plugin list
+
+# Sample output if all plugins are installed
+  NAME                DESCRIPTION                                                                       INSTALLED  STATUS
+  addon               Add-on lifecycle management                                                       v3.6.1     installed
+  cluster             Kubernetes cluster operations                                                     v3.6.1     installed
+  imgpkg              package, distribute, and relocate your configuration and dependent oci images as  v9.1.0     installed
+                      one oci artifact
+... (additional plugin lines truncated for brevity) ...
 ```
 
 ### 1c. Binaries and YAML files required for Supervisor Services
