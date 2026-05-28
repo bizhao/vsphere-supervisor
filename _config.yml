@@ -3,4 +3,4 @@ description: "Advanced documentation for vSphere Supervisor"
 url: "https://vmware.github.io"
 baseurl: "/vsphere-supervisor"
 
-theme: jekyll-theme-minimal
+theme: jekyll-theme-primer
