@@ -163,7 +163,7 @@ $ kubectl logs <pod-name> -n <namespace>
 # Pod Logs Bundle of a Namespace
 $ kubectl cluster-info dump -n <namespace> --output directory=/PATH/NEWDIRECTORYNAME
 
-# Check CPU & Memeory by Node
+# Check CPU & Memory by Node
 $ kubectl top nodes
 ```
 

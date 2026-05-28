@@ -15,9 +15,9 @@ The complete procedure to install a VKS cluster with additional Tanzu package ad
 
 The data flow of packages, binaries, and images between the internet-connected and air-gapped environment can be summarized by the picture below -
 
-![image](/airgapped/ocireg-dataflow.png)
+![image](ocireg-dataflow.png)
 
-## Terminiology
+## Terminology
 * **Bastion Host** A host (preferably a Linux VM) that is connected to the Internet or has access to download packages, binaries, and images from the Internet.
 * **Admin Host** A host (preferably a Linux VM) within the air-gapped environment without internet access. The Admin host generally has network connectivity to all the hosts in the air-gapped environment. Files downloaded from the Internet to the Bastion host are transferred to the Admin Machine, and administrators can use it to interact with the platform.
 * **Tanzu CLI** A plugin-based CLI that is used to interact with the Supervisor and VKS clusters
@@ -56,7 +56,7 @@ Additionally, it is crucial to have the following packages and binaries installe
 This document utilizes an Ubuntu 24.04.4-based Bastion host (**bastion.internet.lab.test**) for this stage. Below are the key plugins and packages that must be downloaded, each playing a critical role in the platform deployment process.
 
 ### 1a. Kubernetes Release OVA files
-Kubernetes releases provide the Kubernetes software distribution for VKS clusters. VMware distributes Kubernetes releases as virtual machine templates, which you synchronize with the platform using a vCenter Content Library. Download the latest Kubernetes release files from https://wp-content.vmware.com/v2/latest/. The versions to be downloaded may depend on the workload requirements. It would be best to download three or more of the latest versions. Follow [Step #11 from the official docuentation](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere-supervisor/8-0/using-tkg-service-with-vsphere-supervisor/administering-kubernetes-releases-for-tkg-service-clusters/create-a-local-content-library-for-air-gapped-cluster-provisioning.html) to download the relevant Kubernetes release files for each version.  
+Kubernetes releases provide the Kubernetes software distribution for VKS clusters. VMware distributes Kubernetes releases as virtual machine templates, which you synchronize with the platform using a vCenter Content Library. Download the latest Kubernetes release files from https://wp-content.vmware.com/v2/latest/. The versions to be downloaded may depend on the workload requirements. It would be best to download three or more of the latest versions. Follow [Step #11 from the official documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere-supervisor/8-0/using-tkg-service-with-vsphere-supervisor/administering-kubernetes-releases-for-tkg-service-clusters/create-a-local-content-library-for-air-gapped-cluster-provisioning.html) to download the relevant Kubernetes release files for each version.
 
 ### 1b. Tanzu CLI and Plugins
 While the Tanzu CLI and its plugins will be installed on the Bastion host (`bastion.internet.lab.test`), they must also be copied to the Admin Machine as part of the file transfer process. When this document was written, Tanzu CLI v1.1.0 was supported with vSphere v8.0.3. The steps below involve installing the Tanzu CLI on the Bastion host, which is necessary to download the Tanzu CLI plugins. The installation of the Tanzu vSphere Plugin is mandatory. Other plugins can be downloaded and installed as required. Depending on your entitlements, the required Tanzu CLI binary can also be downloaded from the Broadcom website. Please have a look at the link for additional information. 
@@ -116,7 +116,7 @@ spec:
 ```
 For additional information and examples, please refer to [Steps 1, 2 and 3 of the official documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere-supervisor/8-0/vsphere-supervisor-services-and-workloads-8-0/deploying-supervisor-services-from-a-private-container-image-registry/relocate-supervisor-services-to-a-private-registry.html). While the official documentation refers to the `imgpkg` binary to perform the download function, the Tanzu CLI's `imgpkg plugin` performs the identical function. 
 
-####, E.g., Download Contour Supervisor Service Binaries and associated YAML files.
+#### E.g., Download Contour Supervisor Service Binaries and associated YAML files.
 When writing this document, the latest version of the Contour Supervisor Service is “v1.28.2”. Please refer to ​​the vSphere Supervisor Services page to check for the updated versions. Download the `contour.yml` and `contour-data-values.yml` files required for the Contour Supervisor Service. These files can be accessed through the vSphere Supervisor Services page. The `contour.yml` file can be obtained by selecting the appropriate Contour version, and the `contour-data-values.yml` can be downloaded from the "Contour Sample values.yaml" section in the same vSphere Supervisor Services page. Locate the value of the image from the `contour.yml` file as described above. 
 
 You can execute the following command from the Bastion host to download the image bundle as a tarball.
@@ -246,7 +246,7 @@ tanzu plugin source update default --uri registry1.env1.lab.test/tanzu_cli/plugi
 ## Install the Plugins
 tanzu plugin install –group vmware-vsphere/default:v8.0.3
  
-## Validate the existace of plugin files in the folder
+## Validate the existence of plugin files in the folder
 ls -al ~/.local/share/tanzu-cli/
 tanzu plugin list
 ```
@@ -254,11 +254,11 @@ tanzu plugin list
 ## 6. Add the Enterprise Registry certificate to the Supervisor (Optional)
 The Supervisor must trust the Enterprise registry certificate. This step is optional and required only when using a certificate not signed by a trusted Certificate authority (e.g., a self-signed certificate). To perform this step, navigate to Workload Management -> Supervisor -> Configure -> Container Registries. Click on Add Registry. 
 
-![image](/airgapped/add-cert0.png)
+![image](add-cert0.png)
 
 Input the Registry host URL, TLS Certificate of the registry (the content of `registry1.crt`), Username, and Password. Note that while the UI states that the Username and Password are optional, they are currently mandatory.
 
-![image](/airgapped/add-cert1.png)
+![image](add-cert1.png)
 
 ## 7. Upload Packages to the Enterprise registry
 Create two projects/folders, with public access, within the registry to upload -
