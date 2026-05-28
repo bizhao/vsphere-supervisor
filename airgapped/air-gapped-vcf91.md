@@ -17,7 +17,7 @@ The procedure involves the following major steps:
 
 The data flow of packages, binaries, and images between the internet-connected and air-gapped environments is summarized in the diagram below.
 
-![image](/airgapped/depotreg-dataflow.png)
+![image](depotreg-dataflow.png)
 
 ## Terminology
 * **Bastion host** &mdash; A host (typically a Linux VM) that is connected to the Internet, or has access to download packages, binaries, and images from the Internet.

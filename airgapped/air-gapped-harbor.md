@@ -19,7 +19,7 @@ We may not have an Enterprise registry available for the platform deployment in 
 
 The data flow of packages, binaries, and images between the internet-connected and air-gapped environment can be summarized by the picture below -
 
-![image](/airgapped/harbor-dataflow.png)
+![image](harbor-dataflow.png)
 
 ## Terminology
 * **Bootstrap registry** An OCI-compliant Harbor registry will be deployed on the vCenter. This registry will be used exclusively to upload the binaries necessary to enable Contour and Harbor Supervisor services on the Supervisor. It will not be utilized for any other purpose.
@@ -143,8 +143,8 @@ sudo echo "$certtext" > /opt/bitnami/nginx/conf/bitnami/certs/server.crt
 #
 sudo /opt/bitnami/ctlscript.sh restart bitnami.nginx
 ```
-* The value of `certtext` has to be updated with the contents of `registory0.crt` (including `-----BEGIN CERTIFICATE-----` and ending with `-----END CERTIFICATE-----`). 
-* The value of `keytext`  has to be updated with the contents of `registory0.key` (including `-----BEGIN PRIVATE KEY-----` and ending with `-----END PRIVATE KEY-----`). 
+* The value of `certtext` has to be updated with the contents of `registry0.crt` (including `-----BEGIN CERTIFICATE-----` and ending with `-----END CERTIFICATE-----`).
+* The value of `keytext` has to be updated with the contents of `registry0.key` (including `-----BEGIN PRIVATE KEY-----` and ending with `-----END PRIVATE KEY-----`).
 * If the above process was not used to generate the self-signed certificates and key files, the contents can be replaced with the user-provided certificate and key file. 
 
 Once the above file has been successfully created, please run the following command to encode (BASE64) it and copy its contents.  
@@ -160,20 +160,20 @@ Deploying the Bitnami Harbor OVA follows the same process as deploying any other
 - When providing an IP address, use the IP/netmask format. 
 - In the `User data to be made available inside the instance` field, paste the content of the base64-encoded output captured in the previous command. 
 
-![image](/airgapped/bitnami0.png)
+![image](bitnami0.png)
 
 Once Harbor is deployed and running, we can grab the default credentials from the VM’s console. SSH into the VM using the `bitnami` user and update the credentials using a secure password. Login to the Harbor UI using the `admin` user and the password provided, and update the credentials using a secure password. See the example below - 
 
-![image](/airgapped/bitnami1.png)
+![image](bitnami1.png)
 
 ### Add the Bootstrap Registry certificate to the Supervisor
 The Supervisor must trust the Bootstrap registry certificate. To perform this step, navigate to Workload Management -> Supervisor -> Configure -> Container Registries. Click on Add Registry. 
 
-![image](/airgapped/add-cert2.png)
+![image](add-cert2.png)
 
 Input the Registry host URL, TLS Certificate of the registry (the content of `registry0.crt`), Username, and Password. Note that while the UI states that the Username and Password are optional, they are currently mandatory.
 
-![image](/airgapped/add-cert3.png)
+![image](add-cert3.png)
 
 ### Add the Bootstrap Registry certificate to the Admin host Trust Store
 You can use the commands below to add the Bootstrap Harbor certificate to the Admin host trust store. 
@@ -217,7 +217,7 @@ tanzu imgpkg copy --tar contour-v1.28.2.tar --to-repo registry0.env1.lab.test/su
 tanzu imgpkg copy --tar harbor-v2.9.1.tar   --to-repo registry0.env1.lab.test/sup-services/harbor  --cosign-signatures
 ```
 
-Additionally, the corresponding Contour and Harbor Supervisor Service YAMsL needs to be updated with the new Bootstrap registry valid location -
+Additionally, the corresponding Contour and Harbor Supervisor Service YAMLs need to be updated with the new Bootstrap registry valid location -
 
 ```yaml
 # Contour.yaml

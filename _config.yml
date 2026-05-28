@@ -1,0 +1,6 @@
+title: "vSphere Supervisor"
+description: "Advanced documentation for vSphere Supervisor"
+url: "https://vmware.github.io"
+baseurl: "/vsphere-supervisor"
+
+theme: jekyll-theme-minimal

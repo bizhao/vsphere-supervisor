@@ -205,7 +205,7 @@ Pre-requisites for NSX Edge Transport Creation
 
 After successfully creating two 2 Edge Transports, create an Edge Cluster and add the NSX Edge Transport Node to the Edge Cluster.
 
-- Documentation Reference \- [Create NSX Edge](https://techdocscluster's.com/us/en/vmware-cis/nsx/vmware-nsx/4-2/installation-guide/installing-nsx-edge.html) 
+- Documentation Reference \- [Create NSX Edge](https://techdocs.broadcom.com/us/en/vmware-cis/nsx/vmware-nsx/4-2/installation-guide/installing-nsx-edge.html)
 - Documentation Reference \- [Create NSX Edge Cluster](https://techdocs.broadcom.com/us/en/vmware-cis/nsx/vmware-nsx/4-2/installation-guide/installing-nsx-edge/create-an-edge-cluster.html)
 
 ### NSX T0 Router
