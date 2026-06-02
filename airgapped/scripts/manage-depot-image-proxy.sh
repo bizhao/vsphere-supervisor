@@ -248,7 +248,7 @@ discover_cluster_id_and_float_from_topology() {
     [[ -n "${FLOAT_IP}" ]] || die "No floating IP paired with matched cluster in decrypt output"
     [[ -n "${CP_ROOT_PASSWORD}" ]] || die "No PWD for matched cluster in ${K8S_DECRYPT_CMD} output (expected PWD: after IP: for that cluster)"
     setup_cp_ssh
-    log "Matched cluster_id=${CLUSTER_ID} floating_ip=${FLOAT_IP}
+    log "Matched cluster_id=${CLUSTER_ID} floating_ip=${FLOAT_IP}"
 }
 
 discover_cp_ips() {
