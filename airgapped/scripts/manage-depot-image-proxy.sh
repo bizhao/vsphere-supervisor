@@ -115,6 +115,7 @@ CP_ROOT_PASSWORD=""
 declare -A TOPOLOGY_CLUSTER_SET=()
 
 WORKDIR=""
+VC_CACERT=""
 
 log() { printf '%s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -126,9 +127,36 @@ cleanup() {
 }
 trap cleanup EXIT
 
+WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/depot-image-proxy.XXXXXX")"
+
+fetch_vc_ca() {
+    local zipf certdir pemf
+    zipf="${WORKDIR}/vc-certs.zip"
+    certdir="${WORKDIR}/vc-certs"
+    pemf="${certdir}/certs/lin/ca-certs.pem"
+
+    # Bootstrap fetch: -k is unavoidable here since we don't yet have the CA cert.
+    curl -ksSf "https://${VC_API_HOST}/certs/download.zip" -o "${zipf}" \
+        || die "Failed to download vCenter certs zip"
+    mkdir -p "${certdir}"
+    unzip -q "${zipf}" -d "${certdir}" \
+        || die "Failed to unzip vCenter certs"
+    # Concatenate all trusted root PEMs (*.0 files) into a single bundle.
+    : > "${pemf}"
+    local f
+    for f in "${certdir}/certs/lin/"*.0; do
+        [[ -f "${f}" ]] || continue
+        cat "${f}" >> "${pemf}"
+    done
+    [[ -s "${pemf}" ]] || die "No *.0 cert files found in certs/lin/ from vCenter certs zip"
+    VC_CACERT="--cacert ${pemf}"
+    log "Fetched vCenter CA cert bundle (${pemf})"
+}
+
 vc_session() {
     local out
-    out="$(curl -ksS -u "${VC_ADMIN_USER}:${VC_ADMIN_PASSWORD}" \
+    # shellcheck disable=SC2086
+    out="$(curl -sS ${VC_CACERT} -u "${VC_ADMIN_USER}:${VC_ADMIN_PASSWORD}" \
         -X POST "https://${VC_API_HOST}/api/session")" || die "vCenter session POST failed"
     SESSION_TOKEN="$(printf '%s' "${out}" | tr -d '"\r\n')"
     [[ -n "${SESSION_TOKEN}" ]] || die "Empty session token from vCenter"
@@ -166,7 +194,8 @@ fetch_supervisor_topology_clusters() {
     local enc url resp
     enc="$(uri_path_escape "${SUPERVISOR_ID}")"
     url="https://${VC_API_HOST}/api/vcenter/namespace-management/supervisors/${enc}/topology"
-    resp="$(curl -ksS -H "vmware-api-session-id: ${SESSION_TOKEN}" "${url}")" \
+    # shellcheck disable=SC2086
+    resp="$(curl -sS ${VC_CACERT} -H "vmware-api-session-id: ${SESSION_TOKEN}" "${url}")" \
         || die "GET supervisor topology failed"
     local -a ids
     mapfile -t ids < <(printf '%s' "${resp}" | jq -r '.[]?.clusters[]? | select(type=="string")') \
@@ -256,7 +285,8 @@ discover_cp_ips() {
     prefix="$(printf '%s' "${FLOAT_IP}" | cut -d. -f1-2)."
     [[ "${prefix}" != "." ]] || die "Invalid floating IP for prefix: ${FLOAT_IP}"
     enc_cluster="$(uri_path_escape "${CLUSTER_ID}")"
-    resp="$(curl -ksS -H "vmware-api-session-id: ${SESSION_TOKEN}" \
+    # shellcheck disable=SC2086
+    resp="$(curl -sS ${VC_CACERT} -H "vmware-api-session-id: ${SESSION_TOKEN}" \
         "https://${VC_API_HOST}/api/vcenter/namespace-management/clusters/${enc_cluster}")" \
         || die "GET namespace-management/clusters/${CLUSTER_ID} failed"
     mapfile -t CP_IPS < <(printf '%s' "${resp}" | jq -r --arg fp "${FLOAT_IP}" --arg p "${prefix}" \
@@ -276,7 +306,8 @@ registry_list_url() {
 # Resolves registry id for DELETE (path segment); empty if not present.
 depot_registry_id_from_list() {
     local list_json
-    list_json="$(curl -ksS -H "vmware-api-session-id: ${SESSION_TOKEN}" "$(registry_list_url)")" \
+    # shellcheck disable=SC2086
+    list_json="$(curl -sS ${VC_CACERT} -H "vmware-api-session-id: ${SESSION_TOKEN}" "$(registry_list_url)")" \
         || die "GET container-image-registries list failed"
     printf '%s' "${list_json}" | jq -r --arg n "${DEPOT_REGISTRY_NAME}" '
         ([.[]? | select(.name == $n)] | first) as $r
@@ -299,7 +330,8 @@ unregister_depot_registry() {
     fi
     enc_id="$(printf '%s' "${reg_id}" | jq -sRr @uri)"
     url="$(registry_list_url)/${enc_id}"
-    status="$(curl -ksS -o "${outf}" -w '%{http_code}' \
+    # shellcheck disable=SC2086
+    status="$(curl -sS ${VC_CACERT} -o "${outf}" -w '%{http_code}' \
         -X DELETE \
         -H "vmware-api-session-id: ${SESSION_TOKEN}" \
         "${url}")" || die "curl DELETE container-image-registry failed"
@@ -324,7 +356,7 @@ map $upstream_http_www_authenticate $new_www_authenticate {
 }
 
 server {
-    listen 5005 ssl;
+    listen __DEPOT_LISTEN_PORT__ ssl;
     server_name depot-image-proxy.kube-system.svc.cluster.local;
 
     ssl_certificate     /etc/vmware/wcp/tls/depot-image-proxy.crt;
@@ -380,7 +412,6 @@ TPL
 }
 
 gen_depot_tls() {
-    WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/depot-image-proxy.XXXXXX")"
     local cakey cacrt srvkey csr srvcrt ext
     cakey="${WORKDIR}/depot-image-proxy-ca.key"
     cacrt="${WORKDIR}/depot-image-proxy-ca.crt"
@@ -430,6 +461,7 @@ remote_install_on_cp() {
         "${MANIFEST}" \
         "${COREDNS_HOSTS}" \
         "${SERVER_SAN_DNS}" \
+        "${DEPOT_PROXY_LISTEN_PORT}" \
         <<'EOS'
 set -euo pipefail
 export KUBECONFIG="${KUBECONFIG:-/etc/kubernetes/admin.conf}"
@@ -437,6 +469,7 @@ NGINX_DEPOT_PROXY_CONF="$1"
 MANIFEST="$2"
 COREDNS_HOSTS="$3"
 DEPOT_FQDN="$4"
+DEPOT_LISTEN_PORT="$5"
 SCRIPT_HOSTS_MARK="# MANUALLY UPDATED BY SCRIPT"
 
 remove_depot_coredns_manual_block() {
@@ -500,8 +533,8 @@ DEPOT_REALM_BASE="https://${DEPOT_FQDN}${AUTH_LOCATION_PATH}"
 
 mkdir -p /etc/vmware/wcp/tls /etc/vmware/wcp/nginx/conf.d
 
-iptables -C INPUT -p tcp --dport 5005 -j ACCEPT 2>/dev/null \
-    || iptables -A INPUT -p tcp --dport 5005 -j ACCEPT
+iptables -C INPUT -p tcp --dport "${DEPOT_LISTEN_PORT}" -j ACCEPT 2>/dev/null \
+    || iptables -A INPUT -p tcp --dport "${DEPOT_LISTEN_PORT}" -j ACCEPT
 
 install -m0644 /tmp/depot-image-proxy.crt /etc/vmware/wcp/tls/depot-image-proxy.crt
 install -m0600 /tmp/depot-image-proxy.key /etc/vmware/wcp/tls/depot-image-proxy.key
@@ -523,13 +556,14 @@ while IFS= read -r line || [[ -n "${line}" ]]; do
     line="${line//__DEPOT_REALM_BASE__/${DEPOT_REALM_BASE}}"
     line="${line//__DEPOT_HOST__/${DEPOT_HOST}}"
     line="${line//__DEPOT_UPSTREAM__/${DEPOT_UPSTREAM}}"
+    line="${line//__DEPOT_LISTEN_PORT__/${DEPOT_LISTEN_PORT}}"
     printf '%s\n' "${line}"
 done < /tmp/depot-nginx.tpl > "${TMP_OUT}"
 mv -f "${TMP_OUT}" "${NGINX_DEPOT_PROXY_CONF}"
 rm -f /tmp/depot-nginx.tpl
 chown nginx:nginx "${NGINX_DEPOT_PROXY_CONF}"
 
-kubectl apply -f - <<'SVC'
+kubectl apply -f - <<SVC
 apiVersion: v1
 kind: Service
 metadata:
@@ -543,7 +577,7 @@ spec:
     - name: https
       protocol: TCP
       port: 443
-      targetPort: 5005
+      targetPort: ${DEPOT_LISTEN_PORT}
 SVC
 
 DEPOT_LB_IP="$(wait_depot_lb_ip)" || {
@@ -580,6 +614,7 @@ remote_remove_on_cp() {
         "${MANIFEST}" \
         "${COREDNS_HOSTS}" \
         "${SERVER_SAN_DNS}" \
+        "${DEPOT_PROXY_LISTEN_PORT}" \
         <<'EOS'
 set -euo pipefail
 export KUBECONFIG="${KUBECONFIG:-/etc/kubernetes/admin.conf}"
@@ -587,6 +622,7 @@ NGINX_DEPOT_PROXY_CONF="$1"
 MANIFEST="$2"
 COREDNS_HOSTS="$3"
 DEPOT_FQDN="$4"
+DEPOT_LISTEN_PORT="$5"
 
 remove_depot_coredns_manual_block() {
     local f="$1" fqdn="$2"
@@ -616,7 +652,7 @@ rm -f \
     /etc/vmware/wcp/tls/depot-image-proxy-ca.crt \
     /etc/vmware/wcp/tls/depot-image-registry-trusted.crt
 
-iptables -D INPUT -p tcp --dport 5005 -j ACCEPT 2>/dev/null || true
+iptables -D INPUT -p tcp --dport "${DEPOT_LISTEN_PORT}" -j ACCEPT 2>/dev/null || true
 
 remove_depot_coredns_manual_block "${COREDNS_HOSTS}" "${DEPOT_FQDN}"
 [[ -f "${COREDNS_HOSTS}" ]] && chmod 0644 "${COREDNS_HOSTS}"
@@ -659,7 +695,8 @@ register_supervisor_registry() {
             }
         }' >"${bodyf}"
 
-    status="$(curl -ksS -o "${WORKDIR}/register.out" -w '%{http_code}' \
+    # shellcheck disable=SC2086
+    status="$(curl -sS ${VC_CACERT} -o "${WORKDIR}/register.out" -w '%{http_code}' \
         -X POST \
         -H "vmware-api-session-id: ${SESSION_TOKEN}" \
         -H "Content-Type: application/json" \
@@ -674,6 +711,7 @@ register_supervisor_registry() {
     log "Registered ${DEPOT_REGISTRY_NAME} with supervisor ${SUPERVISOR_ID} (HTTP ${status})"
 }
 
+fetch_vc_ca
 vc_session
 discover_cluster_id_and_float_from_topology
 discover_cp_ips
