@@ -500,7 +500,7 @@ Software Depot config update is success!
 
 In a VCF deployment that includes VCF Automation, follow [Using Harbor as a VCF service documentation](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-harbor-as-vcf-service/using-harbor-as-a-vcf-service.html) to install and configure Harbor as a VCF service on a Supervisor in a VCF region. Once Harbor VCF service is up and the corresponding Supervisor Service images and VKS Standard Packages images are uploaded to the OCI registry on Software Depot, Supervisor Services and VKS Standard Packages can be installed using the same workflows as in an internet-connected environment.
 
-If your VCF deployment does not include VCF Automation, or you are running a VVF deployment, follow [Deploy Harbor Supervisor Service in VVF without VCFA](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour/deploy-harbor-supervisor-service-in-vvf-without-vcfa.html) to install the Harbor Supervisor Service manually. The additional Supervisor configuration and Harbor Supervisor Service package YAML updates are described below.
+If your VCF deployment does not include VCF Automation, or you are running a VVF deployment, perform step 7a and 7b first, then follow [Deploy Harbor Supervisor Service in VVF without VCFA](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour/deploy-harbor-supervisor-service-in-vvf-without-vcfa.html) to install the Harbor Supervisor Service manually.
 
 ### 7a. Configure a management proxy on the Supervisor to pull Harbor images from Software Depot
 
@@ -513,7 +513,7 @@ Usage:
   manage-depot-image-proxy.sh add    VC_HOST VC_ROOT_SSH_PASSWORD VC_ADMIN_USER VC_ADMIN_PASSWORD SUPERVISOR_ID
   manage-depot-image-proxy.sh remove VC_HOST VC_ROOT_SSH_PASSWORD VC_ADMIN_USER VC_ADMIN_PASSWORD SUPERVISOR_ID
 
-  VC_HOST                 vCenter hostname or IP (SSH as root; also REST https host)
+  VC_HOST                 vCenter host domain (must match server cert; SSH as root; also REST https host)
   VC_ROOT_SSH_PASSWORD    root password for sshpass to vCenter
   VC_ADMIN_USER           vCenter API user (e.g. administrator@vsphere.local)
   VC_ADMIN_PASSWORD       vCenter API password
@@ -533,7 +533,7 @@ Options:
 ./manage-depot-image-proxy.sh add <VC_HOST> <VC_ROOT_SSH_PASSWORD> <VC_ADMIN_USER> <VC_ADMIN_PASSWORD> <SUPERVISOR_ID>
 
 ## Sample command and output
-./manage-depot-image-proxy.sh add 10.161.117.40 'OOKMwN_Kp_r8wlg8' administrator@vsphere.local 'OOKMwN_Kp_r8wlg8' 284256be-074e-4750-8c9b-f57dfea4fb0a
+./manage-depot-image-proxy.sh add lvn-dvm-10-162-200-127.dvm.lvn.broadcom.net 'OOKMwN_Kp_r8wlg8' administrator@vsphere.local 'OOKMwN_Kp_r8wlg8' 284256be-074e-4750-8c9b-f57dfea4fb0a
 Warning: Permanently added '10.161.117.40' (ED25519) to the list of known hosts.
 
 VMware vCenter Server
@@ -588,7 +588,7 @@ Replace it with the management-proxy URL:
 ```yaml
       fetch:
         - imgpkgBundle:
-            image: "depot-image-proxy.kube-system.svc.cluster.local/vcf-supervisor-services/supervisor-service-harbor/ga/2.14.2/harbor:v2.14.2_vmware.2-vks.1"
+            image: "depot-image-proxy.kube-system.svc.cluster.local/supervisor-service-harbor/ga/2.14.2/harbor:v2.14.2_vmware.2-vks.1"
 ```
 
 After updating the YAML, register the Harbor package YAML on the vCenter, then follow the [Deploy Harbor Supervisor Service in VVF without VCFA](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-service-administration-and-development/9-1/using-harbor-as-vcf-service/installing-and-configuring-harbor-and-contour/deploy-harbor-supervisor-service-in-vvf-without-vcfa.html) document to install the Harbor Supervisor Service on the Supervisor and configure Software Depot as the upstream registry for Supervisor Services and other component images.
