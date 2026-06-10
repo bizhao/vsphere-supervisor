@@ -40,7 +40,7 @@ Usage:
   ${SCRIPT_NAME} add    VC_HOST VC_ROOT_SSH_PASSWORD VC_ADMIN_USER VC_ADMIN_PASSWORD SUPERVISOR_ID
   ${SCRIPT_NAME} remove VC_HOST VC_ROOT_SSH_PASSWORD VC_ADMIN_USER VC_ADMIN_PASSWORD SUPERVISOR_ID
 
-  VC_HOST                 vCenter hostname or IP (SSH as root; also REST https host)
+  VC_HOST                 vCenter host domain (must match server cert; SSH as root; also REST https host)
   VC_ROOT_SSH_PASSWORD    root password for sshpass to vCenter
   VC_ADMIN_USER           vCenter API user (e.g. administrator@vsphere.local)
   VC_ADMIN_PASSWORD       vCenter API password
