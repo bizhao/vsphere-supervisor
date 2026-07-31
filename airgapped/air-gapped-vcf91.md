@@ -65,7 +65,7 @@ VMware vSphere Kubernetes releases (VKrs) provide the Kubernetes software distri
 ### 1b. VCF CLI and Plugins
 The VCF CLI and its plugins are first installed on the Bastion host (`bastion.internet.lab.test`); the same tarballs are then transferred to the Admin host and installed there. At the time of writing, VCF CLI 9.1.0 is the supported version for vSphere and Supervisor 9.1.0.
 
-In internet-connected VCF deployments, the VCF CLI binary can be downloaded from the vSphere Supervisor home page or from the VCF Automation Tenant Portal. In the internet-restricted environment that this guide covers, follow [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-1/building-your-cloud-applications/getting-started-with-the-tools-for-building-applications/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-restricted-environments(2).html) to download the VCF Consumption CLI and its plugin bundle. The download steps are summarized below.
+In internet-connected VCF deployments, the VCF CLI binary can be downloaded from the vSphere Supervisor home page or from the VCF Automation Tenant Portal. In the internet-restricted environment that this guide covers, follow [Installing the VCF CLI in Internet Restricted Environments](https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-consumption/latest/consumer-interfaces-in-vcf/installing-and-using-vcf-cli-v9/installing-the-vcf-cli-in-internet-connected-environments/installing-the-vcf-cli-in-internet-restricted-environments(2).html) to download the VCF Consumption CLI and its plugin bundle. The download steps are summarized below.
 
 ```bash
 ## Download VCF CLI and VCF CLI Plugins
@@ -391,7 +391,7 @@ Software Depot config update is success!
 ## 6. Upload packages to the Software Depot
 
 ### 6a. Upload Supervisor Services to the OCI registry on Software Depot
-All Supervisor Service image bundles downloaded in step 1c must be uploaded to the Software Depot using the [`oci_image_depot_migrator.py`](scripts/oci_image_depot_migrator.py) script. The Software Depot FQDN is required for the upload.
+All Supervisor Service image bundles downloaded in step 1c must be uploaded to the Software Depot using the [`oci_image_depot_migrator.py`](scripts/oci_image_depot_migrator.py) script. The Software Depot FQDN is required for the upload. The script will upload the image(s) to a repo on the Software Depot that can support the image reference in a Supervisor Service package yaml, for example, the image will be pushed to /vcf-service-argocd/ga/1.1.0/argocd-service:v1.1.0_vmware.1 for image path /vcf/vcf-service-argocd/ga/1.1.0/argocd-service:v1.1.0_vmware.1 in the ArgoCD service package yaml.
 
 ```bash
 ./oci_image_depot_migrator.py upload -s <supervisor-service-package-image-on-projects.packages.broadcom.com> -t <software-depot-fqdn>
@@ -504,7 +504,7 @@ If your VCF deployment does not include VCF Automation, or you are running a VVF
 
 ### 7a. Configure a management proxy on the Supervisor to pull Harbor images from Software Depot
 
-Software Depot lives on the management network, so a management proxy is required to pull Harbor Supervisor Service images from it. The [`manage-depot-image-proxy.sh`](scripts/manage-depot-image-proxy.sh) script can add and remove this management proxy on a Supervisor in a vCenter. It requires that the Software Depot endpoint is already configured on the vCenter and that you have the vCenter and Supervisor identifiers along with the necessary credentials.
+Software Depot lives on the management network, so a management proxy is required to pull Harbor Supervisor Service images from it. The [`manage-depot-image-proxy.sh`](scripts/manage-depot-image-proxy.sh) script can add and remove this management proxy on a Supervisor in a vCenter. It requires that the Software Depot endpoint is already configured on the vCenter and that you have the vCenter and Supervisor identifiers along with the necessary credentials. If the Supervisor is configured with a proxy for image pulling, this domain `depot-image-proxy.kube-system.svc.cluster.local` should be added to the list of hosts excluded from the configured supervisor proxy via Supervisor proxy configuration UI or API.
 ```bash
 ./manage-depot-image-proxy.sh -h
 
