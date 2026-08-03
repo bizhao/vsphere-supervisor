@@ -185,7 +185,7 @@ Template:
   Spec:
     Fetch:
     - imgpkgBundle:
-        image: registry0.env1.lab.test/sup-services/contour:v1.33.1_vmware.1-tkg.1
+        image: registry0.env1.lab.test/sup-services/contour:v1.33.1_vmware.2-vks.1
 ...
 ```
 
@@ -196,7 +196,7 @@ Template:
   Spec:
     Fetch:
     - imgpkgBundle:
-        image: registry0.env1.lab.test/sup-services/harbor:v2.14.3_vmware.1-tkg.1
+        image: registry0.env1.lab.test/sup-services/harbor:2.14.3_vmware.2-vks.1
 ...
 ```
 
