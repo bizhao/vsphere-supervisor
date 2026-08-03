@@ -1,6 +1,6 @@
 # Appendix: VMware Bootstrap Registry Appliance Deployment Guide
 
-## In this document, we will only capture the additional steps and/or differences that have not been addressed in the [primary air gap install document](/airgapped/air-gapped.md) ,specifically detailing the configuration and deployment of the  VMware Bootstrap Registry Appliance.
+## In this document, we will only capture the additional steps and/or differences that have not been addressed in the [primary air gap install document](/airgapped/air-gapped.md) ,specifically detailing the configuration and deployment of the  VMware Bootstrap Registry Appliance.  
 
 ## Introduction
 In air-gapped scenarios, the lack of connectivity makes it challenging to deploy a Harbor Supervisor Service as platform registry for workloads and infrastructure. In such scenarios, a bootstrap registry is required which can bootstrap the platform registry.  
