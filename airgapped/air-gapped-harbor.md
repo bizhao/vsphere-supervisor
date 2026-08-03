@@ -1,43 +1,48 @@
-# Appendix: Air-Gapped Deployment Using Harbor Supervisor Service
+# Appendix: VMware Bootstrap Registry Appliance Deployment Guide
 
-## In this document, we will only capture the additional steps and/or differences that have not been addressed in the [primary air gap install document](/airgapped/air-gapped.md) 
+## In this document, we will only capture the additional steps and/or differences that have not been addressed in the [primary air gap install document](/airgapped/air-gapped.md) ,specifically detailing the configuration and deployment of the  VMware Bootstrap Registry Appliance.
 
 ## Introduction
-We may not have an Enterprise registry available for the platform deployment in certain scenarios. In such a scenario, we can deploy Harbor Supervisor Service to perform most of the functionalities of an Enterprise registry. The process involves the following significant steps:
+In air-gapped scenarios, the lack of connectivity makes it challenging to deploy a Harbor Supervisor Service as platform registry for workloads and infrastructure. In such scenarios, a bootstrap registry is required which can bootstrap the platform registry.  
+This document details using the VMware Bootstrap Registry Appliance as the Bootstrap Registry (Registry 0) to deploy Harbor Supervisor Service (v2.14.3) on vCenter.  
+The process involves the following significant steps:
 
 - Copy the relevant files and binaries to be moved to the air-gapped environment.
 - Enable the Supervisor.
 - Upload Kubernetes release OVAs to a Content Library.
 - Create vSphere Namespace(s) for VKS Clusters(s).
 - Configure the air-gapped Admin host in the air-gapped environment. 
-- **(NEW) Deploy Bootstrap registry.**
+- **(NEW) Deploy VMware Bootstrap Registry Appliance.**
 - **(NEW) Install Contour and Harbor Supervisor Service to be used as Platform Registry.**
 - Mirror Platform registry with the relevant container images to be used by the platform. 
 - Install the relevant Supervisor Services.
 - Deploy the VKS Cluster(s).
 - Deploy the Tanzu Packages on the VKS Cluster(s).
 
+## Terminology
+* Bootstrap registry - An OCI-compliant Harbor registry will be deployed on the vCenter. This registry will be used exclusively to upload the binaries necessary to enable Contour and Harbor Supervisor services on the Supervisor. It will not be utilized for any other purpose.
+* Platform registry - A Harbor Supervisor Service that performs all functionalities of an Enterprise grade Platform registry.
+
 The data flow of packages, binaries, and images between the internet-connected and air-gapped environment can be summarized by the picture below -
 
 ![image](harbor-dataflow.png)
-
-## Terminology
-* **Bootstrap registry** An OCI-compliant Harbor registry will be deployed on the vCenter. This registry will be used exclusively to upload the binaries necessary to enable Contour and Harbor Supervisor services on the Supervisor. It will not be utilized for any other purpose.
-* **Platform registry** A Harbor Supervisor Service that performs all functionalities of an Enterprise grade Platform registry. 
 
 ## Bill of Materials
 Besides the BOM referenced in the [primary air gap install document](/airgapped/air-gapped.md), we will be leveraging the following additional components - 
 
 |Component|Version|Sample Hostname|
 |---------|-------|----------------------------------|
-|Bootstrap Registry|Harbor v2.12.2|registry0.env1.lab.test|
-|Platform/Enterprise Registry|Harbor v2.9.1|registry1.env1.lab.test|
+|vCenter|9.0.0.0 / 8.0.3.0|vcenter.env1.lab.test|
+|Bootstrap Registry|Harbor v2.15.2|registry0.env1.lab.test|
+|Platform/Enterprise Registry|Harbor v2.14.3|registry1.env1.lab.test|
 
 ## 1. Download all required Plugins, Binaries, and Images
 Besides downloading all the plugins, binaries, and images addressed in the [primary air gap install document](/airgapped/air-gapped.md) -
 
-### 1e. Download Bitnami Harbor OVA
-Before enabling Supervisor Services in an air-gapped environment, we must host images in a bootstrap container registry. This bootstrap repository will be used exclusively to host the necessary images to enable Contour and Harbor Supervisor Services; it will not be utilized for any other purpose. The Debian-based Bitnami Harbor OVA (v2.12.2) can be downloaded from the [Bitnami portal](https://bitnami.com/redirect/to?from=%2Fstack%2Fharbor%2Fvirtual-machine&url=https%3A%2F%2Fmarketplace.cloud.vmware.com%2Fservices%2Fdetails%2Fharbor-singlevm%3Fslug%3Dtrue). The above link redirects to VMware Marketplace. Users must have a valid VMware/Broadcom CSP login and for the org to have the Marketplace tile enabled.
+### 1e. Download VMware Bootstrap Registry Appliance 
+Before enabling Supervisor Services in an air-gapped environment, we must host images in a bootstrap container registry. This bootstrap repository will be used exclusively to host the necessary images to enable Contour and Harbor Supervisor Services; it will not be utilized for any other purpose. Download the official, fully supported production-grade VMware Bootstrap Registry Appliance OVA from the Broadcom/vCenter software portal. This appliance is pre-hardened on Photon OS 5.0 and natively hosts a secure OCI Harbor registry.
+* Download Location for vSphere 8.0 - Broadcom Support Portal - My Downloads - vSphere - VMware vSphere Standard - 8.0 - Drivers & Tools - BOOTSTRAP_APPLIANCE-2.15.2+vmware.1-25635995.ova
+* Download Location for VCF 9.0 - Broadcom Support Portal - My Downloads - VMware Cloud Foundation - VMware Cloud Foundation 9 - 9.0.2 - VMware vCenter - Drivers & Tools - BOOTSTRAP_APPLIANCE-2.15.2+vmware.1-25635995.ova
 
 ### 1f. Download Trivy Database for Platform Registry (Harbor Supervisor Service)
 The Trivy vulnerability scanning database is available for download from gcr.io and is updated periodically. In an air-gapped environment, this database must be periodically downloaded to the Bootstrap machine and then moved to the air-gapped environment to be installed on the Platform container registry (Harbor Supervisor Service). 
@@ -68,103 +73,57 @@ Copy **these additional files** to the Admin host within the air-gapped environm
 
 ## Complete Steps 2, 3, 4, and 5 referenced in the [primary air gap install document](/airgapped/air-gapped.md)
 
-## Deploy Bootstrap registry
-The Bitnami Harbor appliance deploys the Harbor service on port 80 by default. However, this needs to be modified to start the service on port 443. Additional configuration changes are also required. These steps would be best performed on the Admin Host. 
+## Deploy VMware Bootstrap Registry Appliance
+Deploying the VMware Bootstrap Registry OVA follows the same process as deploying any other OVA in vCenter. During the deployment in vCenter (or via ovftool / CLI deployment), you must configure system parameters under the Customize Template step.
+During this stage, SSL/TLS certificate configuration offers two options:
 
-### Create Self Signed Certificates for the Bootstrap registry 
-Using the `openssl` command, generate the required CA and certificate files for the Admin host. You can modify the reference to the Bootstrap registry hostname and IP address according to your environment's requirements. 
+### Option 1: Generate-New (Auto-Generated Certificate)
+When selecting Generate-New, the appliance automatically generates a private Root CA and signs a new SSL/TLS server certificate matching the configured appliance FQDN during firstboot initialization.
 
+#### Step-by-Step Instructions:
+* In the vCenter Deploy OVF Template wizard, proceed to the Customize Template screen.
+* Locate the Certificate Configuration section and set Certificate Type to Generate-New.
+* Fill in the required certificate subject fields:
+* Business Unit Name: Department or business unit (e.g., Finance).
+* CA Common Name: Root CA Common Name (e.g., ca.example.com). Note: Must differ from server_fqdn.
+* Country Name: 2-letter ISO country code (e.g., US).
+* County Name: Locality or county name (e.g., Palo Alto).
+* Organization Name: Company or organization name (e.g., Broadcom).
+* State Name: State or province name (e.g., California).
+* Configure remaining networking properties (IP, FQDN, DNS, Gateway, Passwords) and click Next / Finish to complete deployment.
+
+
+### Option 2: Customer-Provided (Custom Certificate)
+When selecting Customer-Provided, administrators supply custom SSL/TLS server certificates, private keys, and trusted CA certificate bundles encoded in Base64 format during OVA import.
+
+#### Step-by-Step Instructions:
+* Prepare your custom X.509 PEM certificate files on your administrative workstation:
+* Server Certificate file (server.crt)
+* Server Private Key file (server.key)
+* Root / Intermediate CA Certificate file (ca.crt)
+* Encode each certificate file into a single-line Base64 string:
+* Linux/MacOS Terminal
 ```bash
-## Generate CA key pair. Modify as needed
-openssl genrsa -out admin-ca.key 4096
-openssl req -x509 -new -nodes -sha512 -days 3650 -subj "/C=US/ST=CA/L=PaloAlto/O=VCF/OU=Supervisor/CN=Harbor" -key admin-ca.key -out admin-ca.crt
-
-## Generate Harbor certificate. Modify as needed
-openssl genrsa -out registry0.key 4096
-openssl req -sha512 -new -subj "/C=US/ST=CA/L=PaloAlto/O=VCF/OU=Supervisor/CN=registry0.env1.lab.test" -key registry0.key -out registry0.csr
-
-cat > v3.ext <<-EOF
-authorityKeyIdentifier=keyid,issuer
-basicConstraints=CA:FALSE
-keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
-extendedKeyUsage = serverAuth
-subjectAltName = @alt_names
-
-[alt_names]
-DNS.1=registry0.env1.lab.test
-DNS.2=*.registry0.env1.lab.test
-IP.1=192.168.100.57
-EOF
-
-openssl x509 -req -sha512 -days 365 -extfile v3.ext -CA admin-ca.crt -CAkey admin-ca.key -CAcreateserial -in registry0.csr -out registry0.crt
+base64 -w 0 server.crt
+base64 -w 0 server.key
+base64 -w 0 ca.crt
 ```
-The above commands produce the following files :
-```
-registry0.crt
-registry0.key
-registry0.csr
-
-admin-ca.crt
-admin-ca.key
-```
-
-### Deploy Bootstrap Registry - Bitnami Harbor 
-Next, we have to create a “post cloud-init” Harbor customization script that will modify the settings of the Bootstrap Harbor VM. Create a file `harbor.sh` with the following content. 
-
+* Windows Powershell
 ```bash
-#!/bin/bash
-sudo cp /opt/bitnami/nginx/conf/bitnami/certs/server.crt /opt/bitnami/nginx/conf/bitnami/certs/server.crt.bak
-sudo cp /opt/bitnami/nginx/conf/bitnami/certs/server.key /opt/bitnami/nginx/conf/bitnami/certs/server.key.bak
-sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-#
-sudo sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-sudo rm -f /etc/ssh/sshd_not_to_be_run
-sudo systemctl enable ssh
-sudo systemctl start ssh
-#
-sudo sed -i 's/^listen 80/# listen 80/' /opt/bitnami/nginx/conf/nginx.conf
-keytext='-----BEGIN PRIVATE KEY-----
-MIIJQgIBADANBgkqhkiG9w0BAQEFAASCCSwwggkoAgEAAoICAQCuFlaLubI55mHl
-RgTLW5ylZxx1WJUeK0CPvFHbE65mF6uEwIRpS4AjTS0JSTAl3i/7B7EgU/jQL03n
-...
-7CJM7ygWv3Dp7VcHVlB0EJXjn6GE2xhQ2fcwCoXdo+ljdxhAQGw4Fg05PtM9kphp
-KnC5FAczR75inoD1wD5ySOn8xuuZig==
------END PRIVATE KEY-----'
-certtext='-----BEGIN CERTIFICATE-----
-MIIGLjCCBBagAwIBAgIUQmStS/UuZW6DeSHwytm3uwCJckcwDQYJKoZIhvcNAQEN
-BQAwgYExCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJWQTEQMA4GA1UEBwwHQXNoYnVy
-...
-1wkh5ELnVuGf7uBIfOi04aOCnAwqhd48IL41ys6KqkaCamzZ1eH3Cii5uUBcANHZ
-q3cl69e56akuxf3I1G/rfEcF71Nn7sBWTAKDl2/N2pL+O8rek8XSGplNOUNqaSN8
-00U=
------END CERTIFICATE-----'
-sudo echo "$keytext"  > /opt/bitnami/nginx/conf/bitnami/certs/server.key
-sudo echo "$certtext" > /opt/bitnami/nginx/conf/bitnami/certs/server.crt
-#
-sudo /opt/bitnami/ctlscript.sh restart bitnami.nginx
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("server.crt"))
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("server.key"))
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("ca.crt"))
 ```
-* The value of `certtext` has to be updated with the contents of `registry0.crt` (including `-----BEGIN CERTIFICATE-----` and ending with `-----END CERTIFICATE-----`).
-* The value of `keytext` has to be updated with the contents of `registry0.key` (including `-----BEGIN PRIVATE KEY-----` and ending with `-----END PRIVATE KEY-----`).
-* If the above process was not used to generate the self-signed certificates and key files, the contents can be replaced with the user-provided certificate and key file. 
+* In the vCenter Deploy OVF Template wizard, proceed to the Customize Template screen.
+* Locate the Certificate Configuration section and set Certificate Type to Customer-Provided (default).
+* CA Cert: Paste Base64 string of ca.crt. (Optional when using public certificates from vendors such as DigiCert).
+* Server Cert: Paste Base64 string of server.crt.
+* Key of Server Certificate: Paste Base64 string of server.key.
+* Configure remaining networking properties and click Next / Finish to complete deployment.
 
-Once the above file has been successfully created, please run the following command to encode (BASE64) it and copy its contents.  
 
-```bash
-## IMPORTANT to BASE64 encode this file
-​​cat harbor.sh|base64 -w0;echo
-```
+Once Bootstrap Registry  is deployed and running, login to the Harbor UI using the `admin` user and the password provided during deployment.
 
-Deploying the Bitnami Harbor OVA follows the same process as deploying any other OVA in vCenter. During the "Customize Template" step, provide the following required details:
-- The CPU and Memory settings can be adjusted as required. 
-- Network Configuration (optional if DHCP is being used)
-- When providing an IP address, use the IP/netmask format. 
-- In the `User data to be made available inside the instance` field, paste the content of the base64-encoded output captured in the previous command. 
-
-![image](bitnami0.png)
-
-Once Harbor is deployed and running, we can grab the default credentials from the VM’s console. SSH into the VM using the `bitnami` user and update the credentials using a secure password. Login to the Harbor UI using the `admin` user and the password provided, and update the credentials using a secure password. See the example below - 
-
-![image](bitnami1.png)
 
 ### Add the Bootstrap Registry certificate to the Supervisor
 The Supervisor must trust the Bootstrap registry certificate. To perform this step, navigate to Workload Management -> Supervisor -> Configure -> Container Registries. Click on Add Registry. 
@@ -213,8 +172,8 @@ The Contour and Harbor Supervisor Services image bundle binaries downloaded in S
 
 ```bash
 ## Sample Commands
-tanzu imgpkg copy --tar contour-v1.28.2.tar --to-repo registry0.env1.lab.test/sup-services/contour --cosign-signatures
-tanzu imgpkg copy --tar harbor-v2.9.1.tar   --to-repo registry0.env1.lab.test/sup-services/harbor  --cosign-signatures
+tanzu imgpkg copy --tar contour-v1.33.1.tar --to-repo registry0.env1.lab.test/sup-services/contour --cosign-signatures
+tanzu imgpkg copy --tar harbor-v2.14.3.tar   --to-repo registry0.env1.lab.test/sup-services/harbor  --cosign-signatures
 ```
 
 Additionally, the corresponding Contour and Harbor Supervisor Service YAMLs need to be updated with the new Bootstrap registry valid location -
@@ -226,7 +185,7 @@ Template:
   Spec:
     Fetch:
     - imgpkgBundle:
-        image: registry0.env1.lab.test/sup-services/contour:v1.24.4_vmware.1-tkg.1
+        image: registry0.env1.lab.test/sup-services/contour:v1.33.1_vmware.1-tkg.1
 ...
 ```
 
@@ -237,7 +196,7 @@ Template:
   Spec:
     Fetch:
     - imgpkgBundle:
-        image: registry0.env1.lab.test/sup-services/harbor:v2.9.1_vmware.1-tkg.1
+        image: registry0.env1.lab.test/sup-services/harbor:v2.14.3_vmware.1-tkg.1
 ...
 ```
 
