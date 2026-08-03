@@ -97,8 +97,8 @@ vcf plugin install --group vmware-vcfcli/essentials:v9.0.0
 ## Example: Install a single plugin (e.g., the package plugin) instead of a full group
 vcf plugin install package
 
-## Pull the plugin group into a tarball using the following command
-vcf plugin download-bundle --group vmware-vcfcli/essentials:v9.0.0 --to-tar vcf-cli-plugins.tar.gz
+## Pull the downloaded plugins into a tarball using the following command
+vcf plugin download-bundle --group vmware-vcfcli/essentials:v9.0.0 --plugin package --to-tar vcf-cli-plugins.tar.gz
 ```
 
 ### 1c. VKS Standard Packages
@@ -181,10 +181,10 @@ The Admin host (**admin.env1.lab.test**) is essential to the next deployment sta
 
 Note: Before moving forward, verify that all the files mentioned in the Summary section in Step 1 have been successfully copied to the Admin host.
 
-### 5a. Download and Install kubectl and kubectl-vsphere CLI
+### 5a. Download and Install kubectl CLI
 `kubectl` is the command-line tool used to interact with Kubernetes clusters. It allows users to manage and inspect resources within a Kubernetes environment. The `kubectl-vsphere` plugin bundle is still the source used to obtain the `kubectl` binary for the Admin host, even though login to the Supervisor and VKS clusters is now performed using the VCF CLI (see step 5b below).
 
-You can download the `kubectl` and `kubectl-vsphere` plugins to your Admin machine by accessing the Supervisor Cluster Kube-API server endpoint UI or using the command below.
+You can download the `kubectl` CLI to your Admin machine by accessing the Supervisor Cluster Kube-API server endpoint UI or using the command below.
 
 ```bash
 wget https://<Supervisor-KubeAPI-Endpoint>/wcp/plugin/linux-amd64/vsphere-plugin.zip --no-check-certificate
@@ -196,7 +196,6 @@ wget https://supervisor0.env1.lab.test/wcp/plugin/linux-amd64/vsphere-plugin.zip
 unzip ./vsphere-plugin.zip
 cd ./bin
 sudo install kubectl /usr/local/bin/kubectl
-sudo install kubectl-vsphere /usr/local/bin/kubectl-vsphere
 
 ## Verify the version by executing the below commands
 kubectl version
@@ -268,10 +267,10 @@ vcf plugin list
 
 ## Sample output
   NAME                DESCRIPTION                             TARGET  VERSION  STATUS
-  cluster             Kubernetes cluster operations           k8s     v9.0.0   installed
-  kubernetes-release  Kubernetes release operations           k8s     v9.0.0   installed
+  cluster             Kubernetes cluster operations           k8s     v3.3.1   installed
+  kubernetes-release  Kubernetes release operations           k8s     v3.3.1   installed
   namespaces          Discover vSphere Supervisor namespaces  k8s     v9.0.0   installed
-  package             Manage packages                         k8s     v9.0.0   installed
+  package             Manage packages                         k8s     v3.3.1   installed
 ```
 
 ## 6. Add the Enterprise Registry certificate to the Supervisor (Optional)
@@ -393,11 +392,14 @@ VKS Standard Packages can be deployed from the VKS Standard repository using the
 
 Log in to the VKS Cluster using the VCF CLI from the Admin machine, instead of the `kubectl-vsphere` plugin.
 ```bash
+## Create a new context with VKS cluster info
+vcf context create <context-name> --endpoint https://supervisor0.env1.lab.test --username <sso_username> --type k8s --workload-cluster-name <vks-cluster-name> --workload-cluster-namespace <vks-cluster-namespace>
 ## Switch the active VCF CLI context to the target VKS workload cluster
-vcf context use <context-name>:<vsphere-namespace>:<vks-cluster-name>
+vcf context use <context-name>:<vks-cluster-name>
 
 ## Sample Command
-vcf context use supervisor1:ns01:workload-vsphere-vks1
+vcf context create sv-vks --endpoint https://supervisor0.env1.lab.test --username administrator@vsphere.local --type k8s --workload-cluster-name workload-vsphere-vks1 --workload-cluster-namespace ns01
+vcf context use sv-vks:workload-vsphere-vks1
 ```
 
 Add the package repository, pointing at the `vks-packages` project uploaded to the Enterprise registry in step 7a.
@@ -421,6 +423,8 @@ vcf package available list -n tkg-system
 
 ## Sample Output
   NAME                                            DISPLAY-NAME
+  autoscaler.kubernetes.vmware.com                autoscaler
+  cert-manager.kubernetes.vmware.com              cert-manager
   cert-manager.tanzu.vmware.com                   cert-manager
   contour.tanzu.vmware.com                        contour
   external-dns.tanzu.vmware.com                   external-dns
@@ -434,17 +438,19 @@ vcf package available list -n tkg-system
 Install cert-manager using the below commands - 
 ```bash
 ## Command to List the versions of Cert-Manager Available
-vcf package available list cert-manager.tanzu.vmware.com -A
+vcf package available list cert-manager.kubernetes.vmware.com -A
 
 ## Sample Output
   NAMESPACE   NAME                           VERSION                 RELEASED-AT
-  tkg-system  cert-manager.tanzu.vmware.com  1.17.2+vmware.1-vks.1   2025-06-17 12:00:00 +0000 UTC
+  tkg-system  cert-manager.kubernetes.vmware.com  1.17.2+vmware.1-vks.1  2025-06-17 12:00:00 +0000 UTC
 
-## Command to install the cert-manager
-vcf package install cert-manager --package cert-manager.tanzu.vmware.com --namespace <namespaceName> --version <1.17.2+vmware.1-vks.1>
+## Command to install the cert-manager in a new namespace
+kubectl create namespace <namespaceName>
+vcf package install cert-manager --package cert-manager.kubernetes.vmware.com --namespace <namespaceName> --version <1.17.2+vmware.1-vks.1>
 
 ## Sample Command
-vcf package install cert-manager --package cert-manager.tanzu.vmware.com --namespace ns01 --version 1.17.2+vmware.1-vks.1
+kubectl create namespace ns01
+vcf package install cert-manager --package cert-manager.kubernetes.vmware.com --namespace ns01 --version 1.17.2+vmware.1-vks.1
 
 ## Verify the cert-manager pods
 kubectl get pods -n cert-manager
