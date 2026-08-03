@@ -25,7 +25,8 @@ The process involves the following significant steps:
 
 The data flow of packages, binaries, and images between the internet-connected and air-gapped environment can be summarized by the picture below -
 
-![image](harbor-dataflow.png)
+<img width="1338" height="730" alt="image" src="https://github.com/user-attachments/assets/1ce442d7-b227-4665-b95b-0ca53e299bec" />
+
 
 ## Bill of Materials
 Besides the BOM referenced in the [primary air gap install document](/airgapped/air-gapped.md), we will be leveraging the following additional components - 
