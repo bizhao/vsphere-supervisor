@@ -26,8 +26,9 @@ The data flow of packages, binaries, and images between the internet-connected a
 * **VKS Standard Packages** &mdash; A curated set of services and add-ons (for example, cert-manager, Contour, Prometheus, Grafana) that administrators and users can install and manage on VKS clusters using the VCF CLI or relevant add-ons APIs.
 
 ## Prerequisites
-* This guide applies to VCF / VVF 9.1.0 deployments. The OCI registry in VCF Software Depot is used as the OCI-compliant registry that hosts the OCI images for Supervisor Services and VKS Standard Packages.
-* For VCF / VVF deployments based on releases earlier than 9.1.0, an external OCI-compliant registry is required; please follow the legacy [VKS Deployment Guide for air-gapped environments](/airgapped/air-gapped.md) instead.
+* This guide applies to VCF / VVF 9.1.0 and later deployments. The OCI registry in VCF Software Depot is used as the OCI-compliant registry that hosts the OCI images for Supervisor Services and VKS Standard Packages.
+* For VCF / VVF 9.0.0 deployments, an external OCI-compliant registry is required; please follow the [VKS Deployment Guide for VCF 9.0.0 air-gapped environments](/airgapped/air-gapped-vcf90.md) instead.
+* For VCF / VVF deployments based on releases earlier than 9.0.0, an external OCI-compliant registry is required; please follow the legacy [VKS Deployment Guide for air-gapped environments](/airgapped/air-gapped.md) instead.
 
 ## Bill of Materials
 The table below provides sample hostnames and versions used throughout the document for easy reference -
