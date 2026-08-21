@@ -121,9 +121,9 @@ echo
 echo "==> Logging in to obtain access token..."
 TOKEN="$(curl -k -sS -XPOST "${VSP_URL}/api/v1/identity/token" \
   --header 'Content-Type: application/x-www-form-urlencoded' \
-  --data grant_type=password \
-  --data "username=${ADMIN_USERNAME}" \
-  --data "password=${ADMIN_PASSWORD}" \
+  --data-urlencode "grant_type=password" \
+  --data-urlencode "username=${ADMIN_USERNAME}" \
+  --data-urlencode "password=${ADMIN_PASSWORD}" \
   | jq -r '.access_token // empty')"
 
 if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
